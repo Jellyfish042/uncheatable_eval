@@ -2,4 +2,4 @@
 
 <img align="center" src="assets/img.png" width="750">
 
-所有作弊，终将绳之以法！
+一切作弊，终将绳之以法！
