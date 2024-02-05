@@ -13,8 +13,14 @@
 Below are some test results.
 
 <img align="center" src="assets/7b_data_24-02-01.png" width="750">
---
+---
 <img align="center" src="assets/7b_data_24-02-01_2.png" width="750">
+---
+<img align="center" src="assets/1b_data_24-02-05.png" width="750">
+---
+<img align="center" src="assets/1b_data_24-02-05_2.png" width="750">
+---
+<img align="center" src="assets/1b_data_24-02-05_3.png" width="750">
 
 ---
 
