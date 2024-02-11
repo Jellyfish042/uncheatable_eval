@@ -16,7 +16,7 @@ Below are some test results.
 ---
 <img align="center" src="assets/1b_data_24-02-11_physics.png" width="750">
 ---
-<img align="center" src="assets/1b_data_24-02-11_cs.png" width="750">
+<img align="center" src="assets/1b_data_24-02-11_bbc.png" width="750">
 ---
 <img align="center" src="assets/7b_data_24-02-01.png" width="750">
 ---
