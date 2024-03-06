@@ -4,16 +4,16 @@
 
 - Public benchmarks are susceptible to gaming, and testing the models with real-time, fresh data might be a solution. 
 
-- Here, I attempt to evaluate the language model's ability to model using new arXiv papers. 
-
-- In the future, I plan to try more real-time corpora, such as news articles. 
+- Here, I attempt to evaluate the language model's ability to model using new arXiv papers and BBC news.
 
 
 ## Getting Started
 
 1. Create Your Dataset
 
-Run `download_arxiv.ipynb` or `simple_bbc_crawler.ipynb` to download papers from arXiv or news from CNN for a specified date, and obtain a neatly organized dataset (in json format). You can also skip this step and directly use the dataset provided in the repository.
+Run `download_arxiv.ipynb` or `simple_bbc_crawler.ipynb` to download papers from arXiv or news from CNN for a specified date, and obtain a neatly organized dataset (in json format). 
+
+You can also skip this step and directly use the dataset provided in the repository.
 
 2. Evaluate the Model
 
