@@ -62,6 +62,10 @@
 
 Below are some test results.
 
+<img align="center" src="assets/1b_radar_chart.png" width="750">
+---
+<img align="center" src="assets/1b_240329.png" width="750">
+---
 <img align="center" src="assets/3b_240302_bbc.png" width="750">
 ---
 <img align="center" src="assets/3b_240302_cs.png" width="750">
