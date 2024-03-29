@@ -10,7 +10,6 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from datetime import datetime
 import argparse
 
-
 RWKV4_TOKENIZER_FILE = "./support/20B_tokenizer.json"
 
 
@@ -129,8 +128,11 @@ def load_mamba(path):
 def eval_rwkv(model, tokenizer, texts, chunk_size, v4pile=False):
     rwkv_test_data = []
     rwkv_token_length_list = []
+    char_count = []
 
     for idx, sample in tqdm(enumerate(texts), total=len(texts)):
+
+        char_count.append(len(sample))
 
         with torch.no_grad():
 
@@ -160,10 +162,11 @@ def eval_rwkv(model, tokenizer, texts, chunk_size, v4pile=False):
     data_dict = {
         'neg_log_prob_sum': sum(rwkv_test_data) / len(rwkv_test_data),
         'avg tokens': sum(rwkv_token_length_list) / len(rwkv_token_length_list),
+        'avg character count': sum(char_count) / len(char_count)
     }
 
-    print(f'log probability sum: {sum(rwkv_test_data) / len(rwkv_test_data):.2f}')
-    print(f'avg tokens: {sum(rwkv_token_length_list) / len(rwkv_token_length_list):.0f}')
+    # print(f'log probability sum: {sum(rwkv_test_data) / len(rwkv_test_data):.2f}')
+    # print(f'avg tokens: {sum(rwkv_token_length_list) / len(rwkv_token_length_list):.0f}')
 
     return data_dict
 
@@ -171,8 +174,11 @@ def eval_rwkv(model, tokenizer, texts, chunk_size, v4pile=False):
 def eval_hf_model(model, tokenizer, texts, chunk_size):
     data = []
     token_length_list = []
+    char_count = []
 
     for idx, sample in tqdm(enumerate(texts), total=len(texts)):
+
+        char_count.append(len(sample))
 
         with torch.no_grad():
 
@@ -196,10 +202,11 @@ def eval_hf_model(model, tokenizer, texts, chunk_size):
     data_dict = {
         'neg_log_prob_sum': sum(data) / len(data),
         'avg tokens': sum(token_length_list) / len(token_length_list),
+        'avg character count': sum(char_count) / len(char_count)
     }
 
-    print(f'log probability sum: {sum(data) / len(data):.2f}')
-    print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
+    # print(f'log probability sum: {sum(data) / len(data):.2f}')
+    # print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
 
     return data_dict
 
