@@ -114,15 +114,23 @@ def load_hf_model(path, cache_path):
 
 
 def load_mamba(path):
-    from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
+    #     from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
 
-    mamba_tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
-    mamba_model = MambaLMHeadModel.from_pretrained(path, device="cuda", dtype=torch.float16)
-    mamba_model.device = torch.device('cuda')
+    #     mamba_tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
+    #     mamba_model = MambaLMHeadModel.from_pretrained(path, device="cuda", dtype=torch.float16)
+    #     mamba_model.device = torch.device('cuda')
 
-    print_model_parameters_in_billions(mamba_model)
+    #     print_model_parameters_in_billions(mamba_model)
 
-    return mamba_model, mamba_tokenizer
+    #     return mamba_model, mamba_tokenizer
+    from transformers import MambaConfig, MambaForCausalLM, AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(path)
+    model = MambaForCausalLM.from_pretrained(path)
+
+    print_model_parameters_in_billions(model)
+
+    return model, tokenizer
 
 
 def eval_rwkv(model, tokenizer, texts, chunk_size, v4pile=False):
