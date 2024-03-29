@@ -30,7 +30,7 @@ models = [
     # 'bigscience/bloomz-1b7',
     # 'OpenNLPLab/TransNormerLLM-1B',
     # 'microsoft/phi-1_5',
-    # 'state-spaces/mamba-1.4b-hf',
+    # 'state-spaces/mamba-1.4b-hf',  # pip install causal-conv1d>=1.2.0 mamba-ssm
 ]
 
 for model in models:
