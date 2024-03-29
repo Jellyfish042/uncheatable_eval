@@ -1,42 +1,71 @@
-## Uncheatable Eval
+# Uncheatable Eval
 
-- Assessing the capabilities of LLMs is a challenging task. 
+- Assessing the capabilities of LLMs is a challenging task.
 
-- Public benchmarks are susceptible to gaming, and testing the models with real-time, fresh data might be a solution. 
+- Public benchmarks are susceptible to gaming, and testing the models with real-time, fresh data might be a solution.
 
-- Here, I attempt to evaluate the language model's ability to model using new arXiv papers. 
-
-- In the future, I plan to try more real-time corpora, such as news articles. 
+- Here, I attempt to evaluate the language model's ability to model using new arXiv papers and BBC news.
 
 
-## Getting Started
+# Guide
 
-1. Create Your Dataset
+**Uncheatable Eval** now supports the evaluation of typical **Hugging Face** models and **RWKV** models. By following these four simple steps, you can easily obtain evaluation results:
 
-Run `download_arxiv.ipynb` or `simple_bbc_crawler.ipynb` to download papers from arXiv or news from CNN for a specified date, and obtain a neatly organized dataset (in json format). You can also skip this step and directly use the dataset provided in the repository.
+## Step 1: Prepare the Dataset
 
-2. Evaluate the Model
+2 options for preparing your dataset:
 
-There are two ways to evaluate the model:
+- Use the datasets provided in the `data` directory.
+- Run `simple_bbc_crawler.ipynb` to fetch the latest BBC news dataset, or run `download_arxiv.ipynb` to get the latest arXiv papers. Adjust the target time period to your needs. These scripts will automatically build the dataset in JSON format.
 
-- **Option 1**: Run `uncheatable_eval.ipynb` to evaluate the model.
+## Step 2: Prepare the Model
 
-- **Option 2**: Execute the following command:
+- **Uncheatable Eval** now supports the Hugging Face `AutoModelForCausalLM` and RWKV models (in .pth format). You can download the models on your own, or use the `utils/download_hf_models.ipynb` script to download multiple models to a temporary directory at once.
+
+## Step 3: Evaluate the Model
+
+### Evaluating a Single Model
+
+- Use the `eval_model.py` script to evaluate a single model. Execute the following command:
+
   ```
-  python eval_model.py --model <model> --model_type <model_type> --data <data> --log_path <log path> --chunk_size <chunk size>
+  python3 eval_model.py --model <model> --model_type <model_type> --data <data> --log_path <log path> --chunk_size <chunk size>
   ```
-  
-  - `model`: Name of the Huggingface model or the path to the RWKV model weights file.
-  - `model_type`: Type of the model. Choose from `hf`, `rwkv`, `rwkv4pile`, `mamba`.
-  - `data`: The dataset (json file) used for evaluation.
-  - `log_path`: Optional parameter, the path to save log files, default is `'./logs/'`.
-  - `chunk_size`: Optional parameter, the sequence length for each input to the model.
 
+  The parameters are as follows:
 
-## Results
+  - `model`: The name of the Hugging Face model or the path to the RWKV model's weight file.
+  - `model_type`: The type of model, choose from `hf`, `rwkv`, `rwkv4pile`, `mamba`.
+      - `hf` for general Hugging Face `AutoModelForCausalLM`.
+      - `rwkv` for RWKV-4-World models or newer RWKV models.
+      - `rwkv4pile` for RWKV-4-Pile models.
+      - `mamba` for evaluating Mamba models.
+  - `data`: The path to the dataset used for evaluation.
+  - `log_path`: (Optional) The path to save log files, default is `./logs/`.
+  - `chunk_size`: (Optional) The sequence length for each input to the model, default is 1024.
+
+### Batch Evaluation of Multiple Models
+
+- You can also use `eval_multiple_models.py` to batch evaluate multiple models on multiple datasets. Simply modify the dataset and model list in the file, and then run:
+
+  ```
+  python3 eval_multiple_models.py
+  ```
+
+  All log files will be saved in the `log_current time` folder.
+
+## Step 4: Parse and Visualize Results
+
+- Run `show_results.ipynb` to parse and visualize the evaluation results. Please ensure to modify the `folder_path` parameter to your log file directory to properly load and display the results.
+
+# Results
 
 Below are some test results.
 
+<img align="center" src="assets/1b_radar_chart.png" width="750">
+---
+<img align="center" src="assets/1b_240329.png" width="750">
+---
 <img align="center" src="assets/3b_240302_bbc.png" width="750">
 ---
 <img align="center" src="assets/3b_240302_cs.png" width="750">

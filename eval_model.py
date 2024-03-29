@@ -10,7 +10,6 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from datetime import datetime
 import argparse
 
-
 RWKV4_TOKENIZER_FILE = "./support/20B_tokenizer.json"
 
 
@@ -115,22 +114,33 @@ def load_hf_model(path, cache_path):
 
 
 def load_mamba(path):
-    from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
+    #     from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
 
-    mamba_tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
-    mamba_model = MambaLMHeadModel.from_pretrained(path, device="cuda", dtype=torch.float16)
-    mamba_model.device = torch.device('cuda')
+    #     mamba_tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
+    #     mamba_model = MambaLMHeadModel.from_pretrained(path, device="cuda", dtype=torch.float16)
+    #     mamba_model.device = torch.device('cuda')
 
-    print_model_parameters_in_billions(mamba_model)
+    #     print_model_parameters_in_billions(mamba_model)
 
-    return mamba_model, mamba_tokenizer
+    #     return mamba_model, mamba_tokenizer
+    from transformers import MambaConfig, MambaForCausalLM, AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(path)
+    model = MambaForCausalLM.from_pretrained(path)
+
+    print_model_parameters_in_billions(model)
+
+    return model, tokenizer
 
 
 def eval_rwkv(model, tokenizer, texts, chunk_size, v4pile=False):
     rwkv_test_data = []
     rwkv_token_length_list = []
+    char_count = []
 
     for idx, sample in tqdm(enumerate(texts), total=len(texts)):
+
+        char_count.append(len(sample))
 
         with torch.no_grad():
 
@@ -160,10 +170,11 @@ def eval_rwkv(model, tokenizer, texts, chunk_size, v4pile=False):
     data_dict = {
         'neg_log_prob_sum': sum(rwkv_test_data) / len(rwkv_test_data),
         'avg tokens': sum(rwkv_token_length_list) / len(rwkv_token_length_list),
+        'avg character count': sum(char_count) / len(char_count)
     }
 
-    print(f'log probability sum: {sum(rwkv_test_data) / len(rwkv_test_data):.2f}')
-    print(f'avg tokens: {sum(rwkv_token_length_list) / len(rwkv_token_length_list):.0f}')
+    # print(f'log probability sum: {sum(rwkv_test_data) / len(rwkv_test_data):.2f}')
+    # print(f'avg tokens: {sum(rwkv_token_length_list) / len(rwkv_token_length_list):.0f}')
 
     return data_dict
 
@@ -171,8 +182,11 @@ def eval_rwkv(model, tokenizer, texts, chunk_size, v4pile=False):
 def eval_hf_model(model, tokenizer, texts, chunk_size):
     data = []
     token_length_list = []
+    char_count = []
 
     for idx, sample in tqdm(enumerate(texts), total=len(texts)):
+
+        char_count.append(len(sample))
 
         with torch.no_grad():
 
@@ -196,10 +210,11 @@ def eval_hf_model(model, tokenizer, texts, chunk_size):
     data_dict = {
         'neg_log_prob_sum': sum(data) / len(data),
         'avg tokens': sum(token_length_list) / len(token_length_list),
+        'avg character count': sum(char_count) / len(char_count)
     }
 
-    print(f'log probability sum: {sum(data) / len(data):.2f}')
-    print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
+    # print(f'log probability sum: {sum(data) / len(data):.2f}')
+    # print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
 
     return data_dict
 
