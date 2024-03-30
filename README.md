@@ -20,7 +20,7 @@
 
 ## Step 2: Prepare the Model
 
-- **Uncheatable Eval** now supports the Hugging Face `AutoModelForCausalLM` and RWKV models (in .pth format). You can download the models on your own, or use the `utils/download_hf_models.ipynb` script to download multiple models to a temporary directory at once.
+- **Uncheatable Eval** now supports the Hugging Face `AutoModelForCausalLM` and RWKV models (in .pth format). You can download the models on your own, or use the `utils/download_models.py` script to download multiple models to a temporary directory at once (please modify the list of models in the .py file as needed). 
 
 ## Step 3: Evaluate the Model
 
