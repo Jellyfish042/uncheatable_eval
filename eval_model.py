@@ -97,7 +97,7 @@ def load_rwkv4pile(path):
 
 
 def load_hf_model(path, cache_path):
-    hf_tokenizer = AutoTokenizer.from_pretrained(path)
+    hf_tokenizer = AutoTokenizer.from_pretrained(path, cache_dir=cache_path)
     if cache_path is not None:
         hf_model = AutoModelForCausalLM.from_pretrained(path,
                                                         device_map="cuda",
