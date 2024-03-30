@@ -3,9 +3,9 @@ import os
 
 os.environ['HF_HOME'] = './models/temp/'
 
-data_list = ['arxiv_pdfs_cs_240322to240328.json',
-             'arxiv_pdfs_phy_240322to240328.json',
-             'bbc_news_240322to240329.json']
+data_list = ['data/arxiv_pdfs_cs_240322to240328.json',
+             'data/arxiv_pdfs_phy_240322to240328.json',
+             'data/bbc_news_240322to240329.json']
 hf_cache = './models/temp/'
 
 models = [
