@@ -106,7 +106,7 @@ class GitHubCrawler:
         url_tree = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{default_branch}?recursive=1"
 
         response_tree = requests.get(url_tree, headers=headers)
-        # self.print_rate_limit_status(response_tree.headers)
+        self.print_rate_limit_status(response_tree.headers)
         if not response_tree.json().get('tree'):
             error_message = response_tree.json().get('message', 'No error message provided.')
             print(f"Failed to get repository tree. Error: {error_message}")
@@ -210,6 +210,7 @@ def check_date_format(date_str):
 LANGUAGE_CONFIG = {
     'python': {'language': 'Python', 'suffix': '.py'},
     'cpp': {'language': 'C%2B%2B', 'suffix': '.cpp'},
+    'java': {'language': 'Java', 'suffix': '.java'},
 }
 
 if __name__ == '__main__':
@@ -222,7 +223,7 @@ if __name__ == '__main__':
     parser.add_argument('--file_name', type=str, required=True,
                         help='JSON file name')
 
-    parser.add_argument('--language', type=str, default='python', choices=['python', 'cpp'],
+    parser.add_argument('--language', type=str, default='python', choices=['python', 'cpp', 'java'],
                         help='Programming language to filter the repositories. Choices are "python" or "cpp". Default is "python".')
     parser.add_argument('--max_repos', type=int, default=1000,
                         help='Maximum number of repositories to crawl. Default is 1000.')
@@ -232,7 +233,7 @@ if __name__ == '__main__':
                         help='Minimum length of the files to be considered. Default is 1000 characters.')
     parser.add_argument('--max_length', type=int, default=5000,
                         help='Maximum length. Default is 5000 characters.')
-    parser.add_argument('--max_worker', type=int, default=20,
+    parser.add_argument('--max_worker', type=int, default=1,
                         help='Max worker')
     parser.add_argument('--access_token', type=str, default='', help='Access token for the GitHub API.')
 
