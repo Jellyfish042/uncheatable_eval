@@ -16,7 +16,7 @@
 2 options for preparing your dataset:
 
 - Use the datasets provided in the `data` directory.
-- Run `simple_bbc_crawler.ipynb` to fetch the latest BBC news dataset, or run `download_arxiv.ipynb` to get the latest arXiv papers. Adjust the target time period to your needs. These scripts will automatically build the dataset in JSON format.
+- Run `simple_bbc_crawler.ipynb` to fetch the latest BBC news dataset, or run `download_arxiv.ipynb` to get the latest arXiv papers, or run `github_crawler.py` to get the latest GitHub repos. Adjust the target time period to your needs. These scripts will automatically build the dataset in JSON format.
 
 ## Step 2: Prepare the Model
 
