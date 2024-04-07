@@ -123,10 +123,10 @@ def load_mamba(path):
     #     print_model_parameters_in_billions(mamba_model)
 
     #     return mamba_model, mamba_tokenizer
-    from transformers import MambaConfig, MambaForCausalLM, AutoTokenizer
+    from transformers import MambaForCausalLM, AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(path)
-    model = MambaForCausalLM.from_pretrained(path)
+    model = MambaForCausalLM.from_pretrained(path).cuda()
 
     print_model_parameters_in_billions(model)
 
