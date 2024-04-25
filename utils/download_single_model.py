@@ -6,6 +6,9 @@ import gc
 import traceback
 
 if __name__ == '__main__':
+
+    os.environ['HF_HOME'] = './models/temp/'
+
     parser = ArgumentParser()
     parser.add_argument('--model_name', type=str, required=True)
     parser.add_argument('--cache_dir', type=str, default='./models/temp/')
@@ -36,6 +39,7 @@ if __name__ == '__main__':
                 tokenizer = AutoTokenizer.from_pretrained(path, cache_dir=cache_dir)
                 model = AutoModelForCausalLM.from_pretrained(path,
                                                              device_map="cpu",
+                                                             resume_download=True,
                                                              trust_remote_code=True,
                                                              cache_dir=cache_dir).eval()
 

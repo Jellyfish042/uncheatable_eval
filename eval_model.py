@@ -128,7 +128,7 @@ def load_mamba(path):
     model = MambaLMHeadModel.from_pretrained(path, device="cuda", dtype=torch.float16)
     model.device = torch.device('cuda')
 
-    print_model_parameters_in_billions(mamba_model)
+    print_model_parameters_in_billions(model)
 
     #     from transformers import MambaConfig, MambaForCausalLM, AutoTokenizer
 
