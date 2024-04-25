@@ -47,6 +47,14 @@ def print_model_parameters_in_billions(model):
     print(f"Model parameters: {total_params_billion:.3f} billion")
 
 
+def get_model_parameters_in_billions(model):
+    total_params = sum(p.numel() for p in model.parameters())
+
+    total_params_billion = total_params / 1e9
+
+    return total_params_billion
+
+
 def make_log(data_dict, folder_path):
     if not os.path.exists(folder_path):
         try:
@@ -100,12 +108,12 @@ def load_hf_model(path, cache_path):
     hf_tokenizer = AutoTokenizer.from_pretrained(path, cache_dir=cache_path)
     if cache_path is not None:
         hf_model = AutoModelForCausalLM.from_pretrained(path,
-                                                        device_map="cuda",
+                                                        device_map="auto",
                                                         trust_remote_code=True,
                                                         cache_dir=cache_path).eval()
     else:
         hf_model = AutoModelForCausalLM.from_pretrained(path,
-                                                        device_map="cuda",
+                                                        device_map="auto",
                                                         trust_remote_code=True).eval()
 
     print_model_parameters_in_billions(hf_model)
@@ -114,21 +122,20 @@ def load_hf_model(path, cache_path):
 
 
 def load_mamba(path):
-    #     from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
+    from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
 
-    #     mamba_tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
-    #     mamba_model = MambaLMHeadModel.from_pretrained(path, device="cuda", dtype=torch.float16)
-    #     mamba_model.device = torch.device('cuda')
+    tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
+    model = MambaLMHeadModel.from_pretrained(path, device="cuda", dtype=torch.float16)
+    model.device = torch.device('cuda')
 
-    #     print_model_parameters_in_billions(mamba_model)
+    print_model_parameters_in_billions(mamba_model)
 
-    #     return mamba_model, mamba_tokenizer
-    from transformers import MambaForCausalLM, AutoTokenizer
+    #     from transformers import MambaConfig, MambaForCausalLM, AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(path)
-    model = MambaForCausalLM.from_pretrained(path).cuda()
+    #     tokenizer = AutoTokenizer.from_pretrained(path)
+    #     model = MambaForCausalLM.from_pretrained(path).cuda()
 
-    print_model_parameters_in_billions(model)
+    #     print_model_parameters_in_billions(model)
 
     return model, tokenizer
 
@@ -170,7 +177,8 @@ def eval_rwkv(model, tokenizer, texts, chunk_size, v4pile=False):
     data_dict = {
         'neg_log_prob_sum': sum(rwkv_test_data) / len(rwkv_test_data),
         'avg tokens': sum(rwkv_token_length_list) / len(rwkv_token_length_list),
-        'avg character count': sum(char_count) / len(char_count)
+        'avg character count': sum(char_count) / len(char_count),
+        'parameters count': get_model_parameters_in_billions(model)
     }
 
     # print(f'log probability sum: {sum(rwkv_test_data) / len(rwkv_test_data):.2f}')
@@ -210,7 +218,8 @@ def eval_hf_model(model, tokenizer, texts, chunk_size):
     data_dict = {
         'neg_log_prob_sum': sum(data) / len(data),
         'avg tokens': sum(token_length_list) / len(token_length_list),
-        'avg character count': sum(char_count) / len(char_count)
+        'avg character count': sum(char_count) / len(char_count),
+        'parameters count': get_model_parameters_in_billions(model)
     }
 
     # print(f'log probability sum: {sum(data) / len(data):.2f}')
