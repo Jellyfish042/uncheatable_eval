@@ -24,7 +24,7 @@ if __name__ == '__main__':
     for _ in range(5):
         print(f'# downloading: {path}')
         try:
-            if 'BlinkDL/rwkv' in path:
+            if 'BlinkDL' in path:
 
                 repo_name = '/'.join(path.split('/', 2)[:-1])
                 filename = path.split('/', 2)[-1]
