@@ -122,20 +122,22 @@ def load_hf_model(path, cache_path):
 
 
 def load_mamba(path):
-    from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
+    # # state-spaces/mamba-2.8b-slimpj
+    # from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
+    #
+    # tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
+    # model = MambaLMHeadModel.from_pretrained(path, device="cuda", dtype=torch.float16)
+    # model.device = torch.device('cuda')
+    #
+    # print_model_parameters_in_billions(model)
 
-    tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
-    model = MambaLMHeadModel.from_pretrained(path, device="cuda", dtype=torch.float16)
-    model.device = torch.device('cuda')
+    # state-spaces/mamba-1.4b-hf
+    from transformers import MambaConfig, MambaForCausalLM, AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(path)
+    model = MambaForCausalLM.from_pretrained(path).cuda()
 
     print_model_parameters_in_billions(model)
-
-    #     from transformers import MambaConfig, MambaForCausalLM, AutoTokenizer
-
-    #     tokenizer = AutoTokenizer.from_pretrained(path)
-    #     model = MambaForCausalLM.from_pretrained(path).cuda()
-
-    #     print_model_parameters_in_billions(model)
 
     return model, tokenizer
 
