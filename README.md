@@ -62,8 +62,12 @@
 
 Below are some test results.
 
-<img align="center" src="assets/1b_radar.png" width="750">
+<img align="center" src="assets/7b_20240514.png" width="750">
 ---
+
+[//]: # (<img align="center" src="assets/1b_radar.png" width="750">)
+
+[//]: # (---)
 <img align="center" src="assets/1b_240329.png" width="750">
 ---
 <img align="center" src="assets/1b_github_240407.png" width="750">
