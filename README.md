@@ -4,7 +4,7 @@
 
 - Public benchmarks are susceptible to gaming, and testing the models with real-time, fresh data might be a solution.
 
-- Here, I attempt to evaluate the language model's ability to model using new arXiv papers and BBC news.
+- Current data sources: arXiv papers, BBC news, AO3 fanfiction, GitHub projects, Wikipedia.
 
 
 # Guide
