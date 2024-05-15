@@ -57,12 +57,8 @@ class WikipediaCrawler:
             "format": "json"
         }
 
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (compatible; ExampleBot/0.1; +http://example.com/bot)'
-        }
-
         try:
-            response = session.get(url, headers=headers, params=params)
+            response = session.get(url, params=params)
             data = response.json()
 
             if 'error' in data:
