@@ -166,6 +166,7 @@ class GitHubCrawler:
                  suffix='.py',
                  batch_size=100,
                  min_length=1000,
+                 max_length=5000,
                  max_worker=10,
                  access_token=None):
 
@@ -196,6 +197,9 @@ class GitHubCrawler:
 
             global_idx += 1
         pbar.close()
+
+        all_data = [x[:max_length] for x in all_data]
+
         return all_data
 
 
@@ -252,10 +256,11 @@ if __name__ == '__main__':
         suffix=LANGUAGE_CONFIG[args.language]['suffix'],
         batch_size=args.batch_size,
         min_length=args.min_length,
+        max_length=args.max_length,
         max_worker=args.max_worker,
         access_token=args.access_token)
 
-    all_data = [x[:args.max_length] for x in all_data]
+    # all_data = [x[:args.max_length] for x in all_data]
 
     if not os.path.exists('data'):
         os.makedirs('data')
