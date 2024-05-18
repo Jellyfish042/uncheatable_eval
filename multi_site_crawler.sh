@@ -6,7 +6,6 @@ END_DATE="2024-05-14"
 # Set your GitHub access token
 GITHUB_ACCESS_TOKEN=""
 
-# Print start and end dates
 echo "Starting data collection from $START_DATE to $END_DATE"
 
 # ArXiv
@@ -46,5 +45,4 @@ echo "Collecting Wikipedia data from $START_DATE to $END_DATE"
 python3 wikipedia_crawler.py --start_date $START_DATE --end_date $END_DATE --file_name $WIKIPEDIA_FILE_NAME
 echo "Data saved to $WIKIPEDIA_FILE_NAME"
 
-# Print completion message
 echo "Data collection completed for all sources."

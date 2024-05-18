@@ -55,6 +55,13 @@ def get_model_parameters_in_billions(model):
     return total_params_billion
 
 
+def count_rwkv_parameters_in_billions(rwkv_model):
+    total_params = 0
+    for param in rwkv_model.w.values():
+        total_params += param.numel()
+    return total_params / 1e9
+
+
 def make_log(data_dict, folder_path):
     if not os.path.exists(folder_path):
         try:
@@ -180,7 +187,7 @@ def eval_rwkv(model, tokenizer, texts, chunk_size, v4pile=False):
         'neg_log_prob_sum': sum(rwkv_test_data) / len(rwkv_test_data),
         'avg tokens': sum(rwkv_token_length_list) / len(rwkv_token_length_list),
         'avg character count': sum(char_count) / len(char_count),
-        'parameters count': get_model_parameters_in_billions(model)
+        'parameters count': count_rwkv_parameters_in_billions(model)
     }
 
     # print(f'log probability sum: {sum(rwkv_test_data) / len(rwkv_test_data):.2f}')
