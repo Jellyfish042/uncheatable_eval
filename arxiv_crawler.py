@@ -12,6 +12,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import concurrent.futures
+import time
 
 
 class ArxivCrawler:
@@ -58,13 +59,29 @@ class ArxivCrawler:
     @staticmethod
     def find_tex_file(extracted_files, extract_path):
         tex_files = [os.path.join(extract_path, f) for f in extracted_files if f.endswith('.tex')]
+        main_files = ['main.tex', 'paper.tex', 'thesis.tex', 'dissertation.tex']
 
-        if 'main.tex' in [os.path.basename(f) for f in tex_files]:
-            return next(f for f in tex_files if os.path.basename(f) == 'main.tex')
-        elif len(tex_files) == 1:
+        for main_file in main_files:
+            for tex_file in tex_files:
+                if os.path.basename(tex_file) == main_file:
+                    return tex_file
+
+        for tex_file in tex_files:
+            with open(tex_file, 'r', encoding='utf-8') as file:
+                content = file.read()
+                if '\\documentclass' in content:
+                    return tex_file
+
+        for tex_file in tex_files:
+            with open(tex_file, 'r', encoding='utf-8') as file:
+                content = file.read()
+                if '\\begin{document}' in content:
+                    return tex_file
+
+        if len(tex_files) == 1:
             return tex_files[0]
-        else:
-            return None
+
+        return None
 
     @staticmethod
     def replace_whitespace(input_string):
@@ -214,6 +231,7 @@ class ArxivCrawler:
                  max_samples=1000,
                  min_length=2000,
                  max_length=5000,
+                 retries=5,
                  max_workers=16, ):
 
         assert page_size >= 50, "page_size must be greater than 50"
@@ -225,13 +243,29 @@ class ArxivCrawler:
 
         while True:
             url = f'https://arxiv.org/search/advanced?advanced=1&terms-0-operator=AND&terms-0-term=&terms-0-field=title&classification-{classification}=y&classification-include_cross_list=exclude&date-year=&date-filter_by=date_range&date-from_date={start_date}&date-to_date={end_date}&date-date_type=submitted_date_first&abstracts=hide&size={page_size}&order=-announced_date_first&start={start_idx}'
-            response = requests.get(url)
-            soup = BeautifulSoup(response.content, 'html.parser')
-            papers = soup.find_all('li', class_='arxiv-result')
-            pdf_links = [paper.find('a', string='pdf')['href'] for paper in papers if paper.find('a', string='pdf')]
-            src_links = [x.replace('/pdf/', '/src/') for x in pdf_links]
+            for attempt in range(retries):
+                try:
+                    response = requests.get(url, timeout=10)
+                    response.raise_for_status()
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    papers = soup.find_all('li', class_='arxiv-result')
+                    pdf_links = [paper.find('a', string='pdf')['href'] for paper in papers if
+                                 paper.find('a', string='pdf')]
+                    src_links = [x.replace('/pdf/', '/src/') for x in pdf_links]
 
-            start_idx += page_size
+                    start_idx += page_size
+                    break
+                except (requests.RequestException, requests.Timeout) as e:
+                    # print(f"Attempt {attempt + 1} failed: {e}")
+                    time.sleep(2 ** attempt)
+            else:
+                # print("All attempts failed. Moving to the next batch.")
+                start_idx += page_size
+                continue
+
+            if len(src_links) == 0:
+                break
+
             # print(start_idx, len(src_links))
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
