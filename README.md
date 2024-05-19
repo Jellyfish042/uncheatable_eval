@@ -1,28 +1,54 @@
 # Uncheatable Eval
 
-- Assessing the capabilities of LLMs is a challenging task.
+## Introduction
+Traditional LLM benchmarks are easily compromised by unintentional or intentional data leaks, 
+making many benchmarks unreliable and unable to truly reflect the capabilities of LLMs. 
 
-- Public benchmarks are susceptible to gaming, and testing the models with real-time, fresh data might be a solution.
+Uncheatable Eval addresses this issue by testing LLMs on real-time, newly generated data from the internet, 
+ensuring that the evaluation is immune to data leaks and cannot be gamed.
 
-- Current data sources: arXiv papers, BBC news, AO3 fanfiction, GitHub projects, Wikipedia.
+## How?
+Uncheatable Eval assesses the language modeling capabilities of LLMs on new data from various sources such as recent papers on arXiv, new projects on GitHub, news articles, and more. Since this data is brand new (e.g., from the past 1-2 weeks), it is impossible for these data to be included in the training sets of publicly released models, thus avoiding the impact of unintentional or intentional data leaks.
 
+Specifically, we calculate the sum of negative log probabilities of the models on these texts. In other words, models that are more likely to generate these texts are considered better.
+
+*Note* : Uncheatable Eval only tests base models.
+
+## Q&A
+### Why Calculate the Sum of Negative Log Probabilities?
+First, the goal of language models, at least today's language models, is to generate text that is as realistic as possible, maximizing the probability of real text. They are trained and designed to do exactly this. Calculating the sum of negative log probabilities on real text is the most direct way to test this capability.
+
+Second, from the perspective of "compression is intelligence," a good way to test a language model would be to use the model with an entropy coding algorithm for compression and test the model's compression rate [[1]](https://arxiv.org/abs/2309.10668)[[2]](https://arxiv.org/abs/2402.00861). A model with a higher compression rate is considered better. Using a language model + arithmetic coding as an example, it is easy to prove that a model's ability to compress a piece of text is proportional to the sum of its negative log probabilities on that text (see [proof](#proof-of-equivalence-between-compression-rate-and-negative-log-likelihood)).
+
+### Can Models Using Different Tokenizers Be Directly Compared?
+Yes. When calculating the sum of negative log probabilities, we essentially treat the model + tokenizer as a single entity or system. As long as this system has a high probability of generating real text, we consider it better. From the perspective of compression, you can choose any tokenizer. From the compression rate perspective, we don't care; we only care about whether your system can compress the text more effectively.
+
+### Is It Really Uncheatable? Can't I train my model on a large number of arXiv papers to improve its test performance on arXiv papers?
+Uncheatable Eval's data sources currently include new arXiv papers, new GitHub projects, BBC news, AO3 fanfictions, and new Wikipedia entries, with more sources to be added in the future. If you genuinely achieve excellent results across these data by training extensively on these sources, I would consider you to have developed a genuinely good language model rather than cheating.
+
+From my test results, accurately modeling these data is very challenging. I believe Uncheatable Eval more accurately reflects the value of every bit of data and computational power you invest compared to other benchmarks. Models trained with more data and computational power are almost always better, and there are no shortcuts. This is a key strength of Uncheatable Eval.
+
+### Is This Too "Random"? Why Consider Random Texts from the Internet as Ground Truth?
+This is why we choose rigorous and verified texts such as arXiv papers and news reports, which typically have better quality. Additionally, a round of Uncheatable Eval evaluates a model over millions of tokens, increasing the reliability of the results.
+
+In fact, the model rankings obtained through Uncheatable Eval are very stable. For instance, the model ranked first in January's data is highly likely to remain first in March, April, May, and June, indicating that the data obtained through this method is sufficiently representative.
 
 # Guide
 
 **Uncheatable Eval** now supports the evaluation of typical **Hugging Face** models and **RWKV** models. By following these four simple steps, you can easily obtain evaluation results:
 
-## Step 1: Prepare the Dataset
+## Step 1: Prepare Datasets
 
 2 options for preparing your dataset:
 
 - Use the datasets provided in the `data` directory.
-- Run `simple_bbc_crawler.ipynb` to fetch the latest BBC news dataset, or run `download_arxiv.ipynb` to get the latest arXiv papers, or run `github_crawler.py` to get the latest GitHub repos. Adjust the target time period to your needs. These scripts will automatically build the dataset in JSON format.
+- Open `my_bash_script.sh`, modify `START_DATE`, `END_DATE`, and `GITHUB_ACCESS_TOKEN`, then run the script to fetch real-time data.
 
-## Step 2: Prepare the Model
+## Step 2: Prepare Models
 
 - **Uncheatable Eval** now supports the Hugging Face `AutoModelForCausalLM` and RWKV models (in .pth format). You can download the models on your own, or use the `utils/download_models.py` script to download multiple models to a temporary directory at once (please modify the list of models in the .py file as needed). 
 
-## Step 3: Evaluate the Model
+## Step 3: Evaluate Models
 
 ### Evaluating a Single Model
 
@@ -36,13 +62,13 @@
 
   - `model`: The name of the Hugging Face model or the path to the RWKV model's weight file.
   - `model_type`: The type of model, choose from `hf`, `rwkv`, `rwkv4pile`, `mamba`.
-      - `hf` for general Hugging Face `AutoModelForCausalLM`.
+      - `hf` for Hugging Face `AutoModelForCausalLM`.
       - `rwkv` for RWKV-4-World models or newer RWKV models.
       - `rwkv4pile` for RWKV-4-Pile models.
       - `mamba` for evaluating Mamba models.
   - `data`: The path to the dataset used for evaluation.
-  - `log_path`: (Optional) The path to save log files, default is `./logs/`.
-  - `chunk_size`: (Optional) The sequence length for each input to the model, default is 1024.
+  
+  By default, log data will be saved in the "logs" folder.
 
 ### Batch Evaluation of Multiple Models
 
@@ -52,11 +78,9 @@
   python3 eval_multiple_models.py
   ```
 
-  All log files will be saved in the `log_current time` folder.
-
 ## Step 4: Parse and Visualize Results
 
-- Run `show_results.ipynb` to parse and visualize the evaluation results. Please ensure to modify the `folder_path` parameter to your log file directory to properly load and display the results.
+- Run `show_results.ipynb` to parse and visualize the evaluation results.
 
 # Results
 
@@ -91,3 +115,42 @@ Below are some old test results, with slight differences in testing methods comp
 ---
 <img align="center" src="assets/7b_data_24-02-01_2.png" width="750">
 ---
+
+## Proof of Equivalence between Compression Rate and Negative Log-Likelihood
+
+Given a sequence of text $X = x_1 x_2 \ldots x_T$, we use a language model to estimate its probability distribution $P(X)$. The probability of $X$ can be expressed as:
+$$
+P(X) = P(x_1) P(x_2 \mid x_1) P(x_3 \mid x_1, x_2) \ldots P(x_T \mid x_{1:t-1})
+$$
+
+The negative log-likelihood (NLL) is given by:
+$$
+\text{NLL}(X) = -\log P(X) = - \sum_{t=1}^{T} \log P(x_t \mid x_{1:t-1})
+$$
+
+Arithmetic coding is a lossless compression algorithm that encodes a sequence based on its probability distribution. Using a language model, we can obtain the probability distribution for each symbol. The length of the encoded sequence $L$ is proportional to the negative log-probability of the sequence:
+$$
+L = -\log_2 P(X)
+$$
+
+Expanding $P(X)$, we get:
+$$
+L = -\log_2 \left( \prod_{t=1}^{T} P(x_t \mid x_{1:t-1}) \right)
+$$
+
+Using the properties of logarithms, this becomes:
+$$
+L = -\sum_{t=1}^{T} \log_2 P(x_t \mid x_{1:t-1})
+$$
+
+Since NLL is calculated using the natural logarithm $\log$, and compression length $L$ uses the binary logarithm $\log_2$, we need to convert the base of the logarithm:
+$$
+L = \frac{1}{\ln 2} \sum_{t=1}^{T} -\log P(x_t \mid x_{1:t-1})
+$$
+
+Since $\ln 2$ is a constant, this shows that the compression length $L$ is linearly proportional to the negative log-likelihood $\text{NLL}(X)$:
+$$
+L \propto \text{NLL}(X)
+$$
+
+Therefore, using a language model with arithmetic coding for compression is equivalent to calculating the negative log-likelihood of the text sequence.
