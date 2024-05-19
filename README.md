@@ -92,28 +92,28 @@ Below are some test results.
 [//]: # (<img align="center" src="assets/1b_radar.png" width="750">)
 
 [//]: # (---)
-<img align="center" src="assets/1b_240329.png" width="750">
+<img align="center" src="assets/1b_240329.png">
 ---
-<img align="center" src="assets/1b_github_240407.png" width="750">
+<img align="center" src="assets/1b_github_240407.png">
 ---
-<img align="center" src="assets/3b_240302_bbc.png" width="750">
+<img align="center" src="assets/3b_240302_bbc.png">
 ---
-<img align="center" src="assets/3b_240302_cs.png" width="750">
+<img align="center" src="assets/3b_240302_cs.png">
 ---
-<img align="center" src="assets/3b_240302_physics.png" width="750">
+<img align="center" src="assets/3b_240302_physics.png">
 ---
 
 Below are some old test results, with slight differences in testing methods compared to the current code.
 
-<img align="center" src="assets/1b_data_24-02-11_cs.png" width="750">
+<img align="center" src="assets/1b_data_24-02-11_cs.png">
 ---
-<img align="center" src="assets/1b_data_24-02-11_physics.png" width="750">
+<img align="center" src="assets/1b_data_24-02-11_physics.png">
 ---
-<img align="center" src="assets/1b_data_24-02-11_bbc.png" width="750">
+<img align="center" src="assets/1b_data_24-02-11_bbc.png">
 ---
-<img align="center" src="assets/7b_data_24-02-01.png" width="750">
+<img align="center" src="assets/7b_data_24-02-01.png">
 ---
-<img align="center" src="assets/7b_data_24-02-01_2.png" width="750">
+<img align="center" src="assets/7b_data_24-02-01_2.png">
 ---
 
 ## Proof of the Equivalence Between Compression Capability and Negative Log Probability Sum
