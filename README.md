@@ -116,34 +116,6 @@ Below are some old test results, with slight differences in testing methods comp
 <img align="center" src="assets/7b_data_24-02-01_2.png" width="750">
 ---
 
-## Proof of Equivalence between Compression Rate and Negative Log-Likelihood
+## Proof of the Equivalence Between Compression Capability and Negative Log Probability Sum
 
-Given a sequence of text $X = x_1 x_2 \ldots x_T$, we use a language model to estimate its probability distribution $P(X)$. The probability of $X$ can be expressed as:
-
-$P(X) = P(x_1) P(x_2 \mid x_1) P(x_3 \mid x_1, x_2) \ldots P(x_T \mid x_{1:t-1})$
-
-The negative log-likelihood (NLL) is given by:
-
-$\text{NLL}(X) = -\log P(X) = - \sum_{t=1}^{T} \log P(x_t \mid x_{1:t-1})$
-
-Arithmetic coding is a lossless compression algorithm that encodes a sequence based on its probability distribution. Using a language model, we can obtain the probability distribution for each symbol. The length of the encoded sequence $L$ is proportional to the negative log-probability of the sequence:
-
-$L = -\log_2 P(X)$
-
-Expanding $P(X)$, we get:
-
-$L = -\log_2 \left( \prod_{t=1}^{T} P(x_t \mid x_{1:t-1}) \right)$
-
-Using the properties of logarithms, this becomes:
-
-$L = -\sum_{t=1}^{T} \log_2 P(x_t \mid x_{1:t-1})$
-
-Since NLL is calculated using the natural logarithm $\log$, and compression length $L$ uses the binary logarithm $\log_2$, we need to convert the base of the logarithm:
-
-$L = \frac{1}{\ln 2} \sum_{t=1}^{T} -\log P(x_t \mid x_{1:t-1})$
-
-Since $\ln 2$ is a constant, this shows that the compression length $L$ is linearly proportional to the negative log-likelihood $\text{NLL}(X)$:
-
-$L \propto \text{NLL}(X)$
-
-Therefore, using a language model with arithmetic coding for compression is equivalent to calculating the negative log-likelihood of the text sequence.
+<img align="center" src="assets/proof_1.png">
