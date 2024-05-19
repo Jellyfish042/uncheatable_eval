@@ -86,7 +86,7 @@ In fact, the model rankings obtained through Uncheatable Eval are very stable. F
 
 Below are some test results.
 
-<img align="center" src="assets/7b_20240514.png" width="750">
+<img align="center" src="assets/7b_20240514.png">
 ---
 
 [//]: # (<img align="center" src="assets/1b_radar.png" width="750">)
