@@ -98,7 +98,7 @@ class AO3Crawler:
                 return response
             except RequestException as e:
                 retries += 1
-                print(f"Attempt {retries} failed with error: {e}. Retrying in {delay} seconds...")
+                # print(f"Attempt {retries} failed with error: {e}. Retrying in {delay} seconds...")
                 time.sleep(delay)
         raise Exception(f"Failed to fetch URL after {max_retries} attempts")
 
