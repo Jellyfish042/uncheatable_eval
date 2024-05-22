@@ -63,7 +63,7 @@ else
 fi
 
 # AO3
-LANGUAGE="chinese"
+LANGUAGE="english"
 AO3_FILE_NAME="ao3_${LANGUAGE}_${DATE_RANGE}.json"
 echo "Collecting AO3 data from $START_DATE to $END_DATE in $LANGUAGE"
 echo "AO3 has a strict rate limit (20 requests per minute), please implement your own proxy strategy in proxy.py, then set max_workers to larger value, or wait for a longer period."
