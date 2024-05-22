@@ -9,6 +9,7 @@ import argparse
 import os
 from datetime import datetime, timedelta
 from threading import Lock
+from helpers import save_json
 
 
 class GitHubCrawler:
@@ -260,13 +261,4 @@ if __name__ == '__main__':
         max_worker=args.max_worker,
         access_token=args.access_token)
 
-    # all_data = [x[:args.max_length] for x in all_data]
-
-    if not os.path.exists('data'):
-        os.makedirs('data')
-
-    file_name = args.file_name.replace('.json', '') + '.json'
-    path = os.path.join('data', file_name)
-
-    with open(path, 'w') as f:
-        json.dump(all_data, f, ensure_ascii=True, indent=4)
+    save_json(all_data, args.file_name)
