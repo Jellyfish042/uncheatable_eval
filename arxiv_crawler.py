@@ -20,7 +20,7 @@ class ArxivCrawler:
         pass
 
     @staticmethod
-    def download_file(url, save_path, retries=3, timeout=40):
+    def download_file(url, save_path, retries=3, timeout=20):
         try:
             session = requests.Session()
             retry = Retry(
