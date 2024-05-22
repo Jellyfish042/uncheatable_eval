@@ -66,11 +66,22 @@ fi
 LANGUAGE="chinese"
 AO3_FILE_NAME="ao3_${LANGUAGE}_${DATE_RANGE}.json"
 echo "Collecting AO3 data from $START_DATE to $END_DATE in $LANGUAGE"
-python3 ao3_crawler.py --start_date $START_DATE --end_date $END_DATE --file_name $AO3_FILE_NAME --language english --max_workers 1
+echo "AO3 has a strict rate limit (20 requests per minute), please implement your own proxy strategy in proxy.py, then set max_workers to larger value, or wait for a longer period."
+python3 ao3_crawler.py --start_date $START_DATE --end_date $END_DATE --file_name $AO3_FILE_NAME --language $LANGUAGE --max_workers 16
 if [ $? -eq 0 ]; then
     echo "Data saved to $AO3_FILE_NAME"
 else
     echo "Failed to collect AO3 data"
+fi
+
+# BBC News
+BBC_FILE_NAME="bbc_news_${DATE_RANGE}.json"
+echo "Collecting BBC News data from $START_DATE to $END_DATE"
+python3 bbc_crawler.py --start_date $START_DATE --end_date $END_DATE --file_name $BBC_FILE_NAME
+if [ $? -eq 0 ]; then
+    echo "Data saved to $BBC_FILE_NAME"
+else
+    echo "Failed to collect BBC News data"
 fi
 
 echo "Data collection completed for all sources."
