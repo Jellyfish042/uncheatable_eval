@@ -6,13 +6,13 @@ import os
 import tarfile
 import tempfile
 import requests
-from pylatexenc.latex2text import LatexNodes2Text
 import re
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 import concurrent.futures
 import time
+from pylatexenc.latex2text import LatexNodes2Text
 
 
 class ArxivCrawler:
@@ -20,18 +20,28 @@ class ArxivCrawler:
         pass
 
     @staticmethod
-    def download_file(url, save_path, retries=3, timeout=20):
+    def download_file(url, save_path, retries=3, timeout=40):
         try:
             session = requests.Session()
             retry = Retry(
                 total=retries,
                 backoff_factor=1,
-                status_forcelist=[429, 500, 502, 503, 504],
+                status_forcelist=[429, 500, 502, 503, 504, 403],
             )
             adapter = HTTPAdapter(max_retries=retry)
             session.mount('http://', adapter)
             session.mount('https://', adapter)
 
+            head_response = session.head(url, timeout=timeout)
+            head_response.raise_for_status()
+            content_type = head_response.headers.get('Content-Type')
+
+            # Check if the file type contains 'gzip'
+            if 'gzip' not in content_type:
+                # print(f"The file type is not gzip, it is: {content_type}")
+                return False
+
+            # If the file type is gzip, proceed to download the file
             response = session.get(url, timeout=timeout)
             response.raise_for_status()
 
@@ -39,8 +49,8 @@ class ArxivCrawler:
                 f.write(response.content)
 
         except requests.exceptions.RequestException as e:
-            pass
             # print(f"Error downloading the file: {e}")
+            return ""
         return True
 
     @staticmethod
@@ -97,10 +107,25 @@ class ArxivCrawler:
         s = re.sub(r'\s+([,.!?;:])', r'\1', s)
         return s.strip()
 
+    @staticmethod
+    def preprocess_latex(latex_content):
+        latex_content = re.sub(r'\\maketitle', '', latex_content)
+        latex_content = re.sub(r'\\date{.*?}', '', latex_content, flags=re.DOTALL)
+        latex_content = re.sub(r'\\author{.*?}', '', latex_content, flags=re.DOTALL)
+        return latex_content
+
+    @staticmethod
+    def preprocess_latex_2(latex_content):
+        # Replace \href{url}{text} with text (ignoring the URL part)
+        latex_content = re.sub(r'\\href{.*?}{(.*?)}', r'\1', latex_content)
+        return latex_content
+
     def extract_text_from_latex(self, file_path):
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 latex_content = file.read()
+
+            latex_content = self.preprocess_latex(latex_content)
 
             title_match = re.search(r'\\title{(.*?)}', latex_content, re.DOTALL)
             if title_match:
@@ -109,37 +134,46 @@ class ArxivCrawler:
                 # print(f"No title content found in {file_path}")
                 title_content = ""
 
+            abstract_match = re.search(r'\\begin{abstract}(.*?)\\end{abstract}', latex_content, re.DOTALL)
+            if abstract_match:
+                abstract_content = abstract_match.group(1)
+                latex_content = latex_content[:abstract_match.start()] + latex_content[abstract_match.end():]
+            else:
+                abstract_content = ""
+                # print(f"No abstract content found in {file_path}")
+
             document_content_match = re.search(r'\\begin{document}(.*?)\\end{document}', latex_content, re.DOTALL)
             if document_content_match:
                 document_content = document_content_match.group(1)
             else:
-                # print(f"No document content found in {file_path}")
+                print(f"No document content found in {file_path}")
                 return ""
 
-            abstract_start_match = re.search(r'\\begin{abstract}', document_content)
-            if abstract_start_match:
-                abstract_start_index = abstract_start_match.start()
-                abstract_to_end_content = document_content[abstract_start_index:]
-            else:
-                # print(f"No abstract content found in {file_path}")
-                return ""
+            text_maker = LatexNodes2Text(keep_comments=False)
+            # test
+            document_content = self.preprocess_latex_2(document_content)
+            abstract_content = self.preprocess_latex_2(abstract_content)
+            document_plain_text = text_maker.latex_to_text(document_content).strip()
+            abstract_plain_text = text_maker.latex_to_text(abstract_content).strip()
 
-            text_maker = LatexNodes2Text()
-            plain_text = text_maker.latex_to_text(abstract_to_end_content)
-            plain_text = self.replace_whitespace(plain_text)
-            # plain_text = self.clean_extracted_text(plain_text)
-            plain_text = self.remove_angle_brackets_content(plain_text)
-            plain_text = self.remove_space_before_punctuation(plain_text)
-            plain_text = self.replace_whitespace(plain_text)
+            # Clean and process the text
+            document_plain_text = self.replace_whitespace(document_plain_text)
+            document_plain_text = self.remove_angle_brackets_content(document_plain_text)
+            document_plain_text = self.remove_space_before_punctuation(document_plain_text)
+            document_plain_text = self.replace_whitespace(document_plain_text)
+
+            if abstract_content:
+                abstract_plain_text = self.replace_whitespace(abstract_plain_text)
+                document_plain_text = "§ Abstract " + abstract_plain_text + document_plain_text
 
             if title_content:
                 title_content = text_maker.latex_to_text(title_content)
                 title_content = self.replace_whitespace(title_content)
-                plain_text = title_content + "\n" + plain_text
+                document_plain_text = title_content + "\n" + document_plain_text
 
-            return plain_text
+            return document_plain_text
         except FileNotFoundError:
-            # print(f"Error: The file {file_path} does not exist.")
+            print(f"Error: The file {file_path} does not exist.")
             return ""
         except Exception as e:
             # print(f"An error occurred while reading the file {file_path}: {e}")
@@ -152,12 +186,10 @@ class ArxivCrawler:
             with tempfile.TemporaryDirectory(dir=temp_dir_path) as temp_dir:
                 tar_gz_path = os.path.join(temp_dir, 'file.tar.gz')
                 if not self.download_file(url, tar_gz_path):
-                    # print("Error: Failed to download the file.")
                     return ""
 
                 extract_path = os.path.join(temp_dir, 'extracted_files')
                 os.makedirs(extract_path, exist_ok=True)
-
                 file_names = self.extract_and_list_files(tar_gz_path, extract_path)
                 if not file_names:
                     # print("Error: No files extracted.")
@@ -175,13 +207,9 @@ class ArxivCrawler:
             return ""
 
     def process_link(self, src_link, min_length, max_length):
-        try:
-            text = self.download_and_extract_tex_file(src_link)
-            if len(text) > min_length:
-                return text[:max_length]
-        except Exception as e:
-            # print(f"Error: {e}")
-            return None
+        text = self.download_and_extract_tex_file(src_link)
+        if len(text) > min_length:
+            return text[:max_length]
 
     def pipeline_single(self,
                         start_date,
@@ -208,6 +236,7 @@ class ArxivCrawler:
             start_idx += page_size
 
             for src_link in src_links:
+                print(src_link)
                 try:
                     text = self.download_and_extract_tex_file(src_link)
                     if len(text) > min_length:
@@ -256,17 +285,15 @@ class ArxivCrawler:
                     start_idx += page_size
                     break
                 except (requests.RequestException, requests.Timeout) as e:
-                    # print(f"Attempt {attempt + 1} failed: {e}")
-                    time.sleep(2 ** attempt)
+                    print(f"Attempt {attempt + 1} failed: {e}")
+                    time.sleep(5)
             else:
-                # print("All attempts failed. Moving to the next batch.")
+                print("All attempts failed. Moving to the next batch.")
                 start_idx += page_size
                 continue
 
             if len(src_links) == 0:
                 break
-
-            # print(start_idx, len(src_links))
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {executor.submit(self.process_link, link, min_length, max_length): link for link in src_links}

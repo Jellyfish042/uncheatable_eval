@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Set the start and end date for the data collection
+# Recommend set a 2 weeks range
 START_DATE="2024-05-01"
 END_DATE="2024-05-14"
 # Set your GitHub access token

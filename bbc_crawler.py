@@ -77,7 +77,7 @@ class BBCCrawler:
 
                     return links
                 else:
-                    print(f'Response status code {response.status_code}. Retrying in {sleep_time} seconds...')
+                    # print(f'Response status code {response.status_code}. Retrying in {sleep_time} seconds...')
                     time.sleep(sleep_time)
             except Exception as e:
                 # print(f"Error: {e}")
