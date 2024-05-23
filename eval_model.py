@@ -128,21 +128,20 @@ def load_hf_model(path, cache_path):
     return hf_model, hf_tokenizer
 
 
-def load_mamba(path):
+def load_mamba(path, cache_path):
     if 'hf' in path:
 
         # state-spaces/mamba-1.4b-hf
         from transformers import MambaForCausalLM, AutoTokenizer
 
-        tokenizer = AutoTokenizer.from_pretrained(path)
-        model = MambaForCausalLM.from_pretrained(path).cuda()
+        tokenizer = AutoTokenizer.from_pretrained(path, cache_dir=cache_path)
+        model = MambaForCausalLM.from_pretrained(path, cache_dir=cache_path).cuda()
 
         print_model_parameters_in_billions(model)
 
         return model, tokenizer
     else:
         # state-spaces/mamba-2.8b-slimpj
-        # pip install git+https://github.com/huggingface/transformers@main
         # pip install mamba-ssm
         # pip install causal-conv1d>=1.2.0
         from transformers import AutoTokenizer
@@ -267,7 +266,7 @@ if __name__ == '__main__':
     elif args.model_type == 'rwkv':
         model, tokenizer = load_rwkv(args.model)
     elif args.model_type == 'mamba':
-        model, tokenizer = load_mamba(args.model)
+        model, tokenizer = load_mamba(args.model, args.model_cache)
     elif args.model_type == 'rwkv4pile':
         model, tokenizer = load_rwkv4pile(args.model)
     else:
