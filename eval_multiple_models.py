@@ -59,6 +59,8 @@ models = [
     # 'allenai/OLMo-1.7-7B-hf'
 ]
 
+max_retries = 3
+
 for model in models:
     if 'BlinkDL/rwkv-4-pile' in model:
         model_type = 'rwkv4pile'
@@ -68,10 +70,21 @@ for model in models:
         model_type = 'mamba'
     else:
         model_type = 'hf'
+
     for data in data_list:
         if 'BlinkDL/rwkv' in model:
             command = f"echo 'y' | python eval_model.py --model {os.path.join(hf_cache, model.split('/')[-1])} --model_type {model_type} --data {data} --model_cache {hf_cache}"
         else:
             command = f"echo 'y' | python eval_model.py --model {model} --model_type {model_type} --data {data} --model_cache {hf_cache}"
 
-        subprocess.run(command, shell=True, text=True)
+        for attempt in range(max_retries):
+            try:
+                result = subprocess.run(command, shell=True, text=True, check=True)
+                if result.returncode == 0:
+                    # print(f"Command succeeded on attempt {attempt + 1}")
+                    break
+            except subprocess.CalledProcessError as e:
+                print(f"Command failed on attempt {attempt + 1} with error: {e}")
+                if attempt == max_retries - 1:
+                    print("Max retries reached. Command failed.")
+
