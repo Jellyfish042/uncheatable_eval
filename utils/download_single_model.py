@@ -36,11 +36,15 @@ if __name__ == '__main__':
                 print('# download successful')
 
                 break
+            elif path.startswith("state-spaces/mamba-") and 'hf' not in path:
+                from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
+                tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
+                model = MambaLMHeadModel.from_pretrained(args.model_name, device='cpu')
             else:
                 tokenizer = AutoTokenizer.from_pretrained(path, cache_dir=cache_dir)
                 model = AutoModelForCausalLM.from_pretrained(path,
                                                              device_map="cpu",
-                                                             resume_download=True,
+                                                             resume_download=False,
                                                              trust_remote_code=True,
                                                              cache_dir=cache_dir).eval()
 
