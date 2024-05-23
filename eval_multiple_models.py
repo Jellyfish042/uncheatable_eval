@@ -27,14 +27,14 @@ models = [
     # 'bigscience/bloomz-1b7',
     # 'OpenNLPLab/TransNormerLLM-1B',
     # 'microsoft/phi-1_5',
-    # 'state-spaces/mamba-1.4b-hf',  # pip install causal-conv1d>=1.2.0 mamba-ssm
+    # 'state-spaces/mamba-1.4b-hf',  # pip install causal-conv1d>=1.2.0 mamba-ssm, # use state-spaces/mamba-1.4b-hf instead of state-spaces/mamba-1.4b
 
     # 'BlinkDL/rwkv-6-world/RWKV-x060-World-3B-v2.1-20240417-ctx4096.pth',
     # 'BlinkDL/rwkv-6-world/RWKV-x060-World-3B-v2-20240228-ctx4096.pth',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-3B-v2-20231113-ctx4096.pth',
     # 'stabilityai/stablelm-3b-4e1t',
     # 'Qwen/Qwen1.5-4B',
-    # 'state-spaces/mamba-2.8b',
+    # 'state-spaces/mamba-2.8b-hf',  # use state-spaces/mamba-2.8b-hf instead of state-spaces/mamba-2.8b
     # 'openlm-research/open_llama_3b_v2',
     # 'cerebras/btlm-3b-8k-base',
     # 'state-spaces/mamba-2.8b-slimpj',
