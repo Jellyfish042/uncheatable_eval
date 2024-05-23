@@ -3,9 +3,7 @@ import os
 
 os.environ['HF_HOME'] = './models/temp/'
 
-data_list = ['data/arxiv_pdfs_cs_240322to240328.json',
-             'data/arxiv_pdfs_phy_240322to240328.json',
-             'data/bbc_news_240322to240329.json']
+data_list = ['data/wikipedia_english_20240501to20240515.json']
 hf_cache = './models/temp/'
 
 models = [
@@ -31,6 +29,36 @@ models = [
     # 'OpenNLPLab/TransNormerLLM-1B',
     # 'microsoft/phi-1_5',
     # 'state-spaces/mamba-1.4b-hf',  # pip install causal-conv1d>=1.2.0 mamba-ssm
+
+    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-3B-v2.1-20240417-ctx4096.pth',
+    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-3B-v2-20240228-ctx4096.pth',
+    # 'BlinkDL/rwkv-5-world/RWKV-5-World-3B-v2-20231113-ctx4096.pth',
+    # 'stabilityai/stablelm-3b-4e1t',
+    # 'Qwen/Qwen1.5-4B',
+    # 'state-spaces/mamba-2.8b',
+    # 'openlm-research/open_llama_3b_v2',
+    # 'cerebras/btlm-3b-8k-base',
+    # 'state-spaces/mamba-2.8b-slimpj',
+    # 'EleutherAI/pythia-2.8b-v0',
+    # 'togethercomputer/RedPajama-INCITE-Base-3B-v1',
+    # 'princeton-nlp/Sheared-LLaMA-2.7B',
+    # 'BlinkDL/rwkv-4-pile-3b/RWKV-4-Pile-3B-20221110-ctx4096.pth',
+    # 'BlinkDL/rwkv-4-world/RWKV-4-World-3B-v1-20230619-ctx4096.pth',
+    # 'stabilityai/stablelm-base-alpha-3b',
+
+    # 'meta-llama/Meta-Llama-3-8B',
+    # 'mistralai/Mistral-7B-v0.1',
+    # 'BlinkDL/rwkv-5-world/RWKV-5-World-7B-v2-20240128-ctx4096.pth',
+    # 'BlinkDL/temp-latest-training-models/rwkv-x060-7b-world-v2.1-53%trained-20240420-ctx4k.pth',
+    # 'meta-llama/Llama-2-7b-hf',
+    # 'TRI-ML/mamba-7b-rw',
+    # 'Qwen/Qwen1.5-7B',
+    # 'tiiuae/falcon-7b',
+    # 'mosaicml/mpt-7b',
+    # 'EleutherAI/pythia-6.9b-v0',
+    # 'allenai/OLMo-7B',
+    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth'
+    # 'allenai/OLMo-1.7-7B-hf'
 ]
 
 for model in models:
