@@ -7,8 +7,7 @@ data_list = ['data/wikipedia_english_20240501to20240515.json']
 hf_cache = './models/temp/'
 
 models = [
-    'BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2-20240208-ctx4096.pth',
-    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
+    'BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-1B5-v2-20231025-ctx4096.pth',
     # 'stabilityai/stablelm-2-1_6b',
     # '42dot/42dot_LLM-PLM-1.3B',
@@ -49,7 +48,6 @@ models = [
     # 'meta-llama/Meta-Llama-3-8B',
     # 'mistralai/Mistral-7B-v0.1',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-7B-v2-20240128-ctx4096.pth',
-    # 'BlinkDL/temp-latest-training-models/rwkv-x060-7b-world-v2.1-53%trained-20240420-ctx4k.pth',
     # 'meta-llama/Llama-2-7b-hf',
     # 'TRI-ML/mamba-7b-rw',
     # 'Qwen/Qwen1.5-7B',
