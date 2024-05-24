@@ -1,30 +1,30 @@
 import subprocess
 import os
+import time
 
 os.environ['HF_HOME'] = './models/temp/'
 
-data_list = ['data/wikipedia_english_20240501to20240515.json']
+data_list = [
+    'data/wikipedia_english_20240501to20240515.json'
+]
 hf_cache = './models/temp/'
 
 models = [
     'BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-1B5-v2-20231025-ctx4096.pth',
     # 'stabilityai/stablelm-2-1_6b',
-    # '42dot/42dot_LLM-PLM-1.3B',
     # 'h2oai/h2o-danube-1.8b-base',
     # 'TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T',
     # 'EleutherAI/pythia-1.4b-v0',
     # 'bigscience/bloom-1b7',
     # 'BlinkDL/rwkv-4-pile-1b5/RWKV-4-Pile-1B5-20220903-8040.pth',
     # 'BlinkDL/rwkv-4-world/RWKV-4-World-1.5B-v1-fixed-20230612-ctx4096.pth',
-    # '42dot/42dot_LLM-SFT-1.3B',
     # 'allenai/OLMo-1B',
     # 'Qwen/Qwen1.5-1.8B',
     # 'Qwen/Qwen-1_8B',
     # 'mosaicml/mpt-1b-redpajama-200b',
     # 'princeton-nlp/Sheared-LLaMA-1.3B',
     # 'tiiuae/falcon-rw-1b',
-    # 'bigscience/bloomz-1b7',
     # 'OpenNLPLab/TransNormerLLM-1B',
     # 'microsoft/phi-1_5',
     # 'state-spaces/mamba-1.4b-hf',  # pip install causal-conv1d>=1.2.0 mamba-ssm, # use state-spaces/mamba-1.4b-hf instead of state-spaces/mamba-1.4b
@@ -43,7 +43,6 @@ models = [
     # 'princeton-nlp/Sheared-LLaMA-2.7B',
     # 'BlinkDL/rwkv-4-pile-3b/RWKV-4-Pile-3B-20221110-ctx4096.pth',
     # 'BlinkDL/rwkv-4-world/RWKV-4-World-3B-v1-20230619-ctx4096.pth',
-    # 'stabilityai/stablelm-base-alpha-3b',
 
     # 'meta-llama/Meta-Llama-3-8B',
     # 'mistralai/Mistral-7B-v0.1',
@@ -87,4 +86,5 @@ for model in models:
                 print(f"Command failed on attempt {attempt + 1} with error: {e}")
                 if attempt == max_retries - 1:
                     print("Max retries reached. Command failed.")
-
+                else:
+                    time.sleep(10)
