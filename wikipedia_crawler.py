@@ -1,15 +1,11 @@
 import requests
-import datetime
-import time
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util import Retry
 import argparse
 from bs4 import BeautifulSoup
 import re
 from tqdm import tqdm
 import concurrent.futures
-import os
-import json
 from helpers import save_json
 
 
