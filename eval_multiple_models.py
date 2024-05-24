@@ -5,6 +5,12 @@ import time
 os.environ['HF_HOME'] = './models/temp/'
 
 data_list = [
+    'data/ao3_english_20240501to20240515.json',
+    'data/arxiv_computer_science_20240501to20240515.json',
+    'data/arxiv_physics_20240501to20240515.json',
+    'data/bbc_news_20240501to20240515.json',
+    'data/github_cpp_20240501to20240515.json',
+    'data/github_python_20240501to20240515.json',
     'data/wikipedia_english_20240501to20240515.json'
 ]
 hf_cache = './models/temp/'
@@ -54,7 +60,7 @@ models = [
     # 'mosaicml/mpt-7b',
     # 'EleutherAI/pythia-6.9b-v0',
     # 'allenai/OLMo-7B',
-    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth'
+    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
     # 'allenai/OLMo-1.7-7B-hf'
 ]
 
@@ -72,9 +78,9 @@ for model in models:
 
     for data in data_list:
         if 'BlinkDL/rwkv' in model:
-            command = f"echo 'y' | python eval_model.py --model {os.path.join(hf_cache, model.split('/')[-1])} --model_type {model_type} --data {data} --model_cache {hf_cache}"
+            command = f"echo 'y' | python3 eval_model.py --model {os.path.join(hf_cache, model.split('/')[-1])} --model_type {model_type} --data {data} --model_cache {hf_cache}"
         else:
-            command = f"echo 'y' | python eval_model.py --model {model} --model_type {model_type} --data {data} --model_cache {hf_cache}"
+            command = f"echo 'y' | python3 eval_model.py --model {model} --model_type {model_type} --data {data} --model_cache {hf_cache}"
 
         for attempt in range(max_retries):
             try:

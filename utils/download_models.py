@@ -2,9 +2,9 @@ import subprocess
 import os
 
 model_names = [
-    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
+    'BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-1B5-v2-20231025-ctx4096.pth',
-    'stabilityai/stablelm-2-1_6b',
+    # 'stabilityai/stablelm-2-1_6b',
     # 'h2oai/h2o-danube-1.8b-base',
     # 'TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T',
     # 'EleutherAI/pythia-1.4b-v0',
@@ -35,17 +35,17 @@ model_names = [
     # 'BlinkDL/rwkv-4-pile-3b/RWKV-4-Pile-3B-20221110-ctx4096.pth',
     # 'BlinkDL/rwkv-4-world/RWKV-4-World-3B-v1-20230619-ctx4096.pth',
 
-    # 'meta-llama/Meta-Llama-3-8B',
+    # 'meta-llama/Meta-Llama-3-8B',  # pip install accelerate
     # 'mistralai/Mistral-7B-v0.1',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-7B-v2-20240128-ctx4096.pth',
     # 'meta-llama/Llama-2-7b-hf',
     # 'TRI-ML/mamba-7b-rw',
     # 'Qwen/Qwen1.5-7B',
     # 'tiiuae/falcon-7b',
-    # 'mosaicml/mpt-7b',
+    # 'mosaicml/mpt-7b',  # pip install einops
     # 'EleutherAI/pythia-6.9b-v0',
     # 'allenai/OLMo-7B',
-    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth'
+    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
     # 'allenai/OLMo-1.7-7B-hf'
 ]
 
