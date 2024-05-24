@@ -44,15 +44,15 @@ In fact, the model rankings obtained through Uncheatable Eval are very stable. F
 - Use the datasets provided in the `data` directory.
 - Open `multi_site_crawler.sh`, modify `START_DATE`, `END_DATE`, and `GITHUB_ACCESS_TOKEN`, then run the script to fetch real-time data.
 
-## Step 2: Prepare Models
-
-- **Uncheatable Eval** now supports the Hugging Face `AutoModelForCausalLM` and RWKV models (in .pth format). You can download the models on your own, or use the `utils/download_models.py` script to download multiple models to a temporary directory at once (please modify the list of models in the .py file as needed). 
-
 *Note* : 
 
 AO3 has a strict rate limit (20 requests per minute), you can implement your own proxy strategy in proxy.py and then set max_worker to a higher value to avoid rate limiting, or wait for a longer time.
 
 Wikipedia crawler does not support fetching data older than one month.
+
+## Step 2: Prepare Models
+
+- **Uncheatable Eval** now supports the Hugging Face `AutoModelForCausalLM` and RWKV models (in .pth format). You can download the models on your own, or use the `utils/download_models.py` script to download multiple models to a temporary directory at once (please modify the list of models in the .py file as needed).
 
 ## Step 3: Evaluate Models
 
@@ -112,6 +112,10 @@ Wikipedia crawler does not support fetching data older than one month.
 ---
 
 Changes in Model Rankings Over Time (Excluding Wikipedia Data)
+
+<img align="center" src="assets/1b_rank_change_2404to2405.png">
+
+---
 
 <img align="center" src="assets/3b_rank_change_2404to2405.png">
 
