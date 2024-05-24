@@ -129,7 +129,7 @@ Changes in Model Rankings Over Time (Excluding Wikipedia Data)
 
 ```
 @software{uncheatable_eval,
-  author       = {Kaifeng Tan},
+  author       = {Jellyfish042},
   title        = {Uncheatable Eval},
   month        = may,
   year         = 2024,
