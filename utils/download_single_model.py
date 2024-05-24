@@ -44,7 +44,7 @@ if __name__ == '__main__':
                 tokenizer = AutoTokenizer.from_pretrained(path, cache_dir=cache_dir)
                 model = AutoModelForCausalLM.from_pretrained(path,
                                                              device_map="cpu",
-                                                             resume_download=False,
+                                                             force_download=False,
                                                              trust_remote_code=True,
                                                              cache_dir=cache_dir).eval()
 
