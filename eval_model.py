@@ -39,6 +39,14 @@ def calculate_log_sum(logits, target_token_ids):
     return log_sum.item()
 
 
+def get_string_byte_size(input_string):
+    # Encode the string into bytes using UTF-8 encoding
+    byte_array = input_string.encode('utf-8')
+    # Calculate the length of the byte array
+    byte_size = len(byte_array)
+    return byte_size
+
+
 def print_model_parameters_in_billions(model):
     total_params = sum(p.numel() for p in model.parameters())
 
@@ -194,7 +202,9 @@ def eval_rwkv(model, tokenizer, texts, chunk_size, v4pile=False):
         'neg_log_prob_sum': sum(rwkv_test_data) / len(rwkv_test_data),
         'avg tokens': sum(rwkv_token_length_list) / len(rwkv_token_length_list),
         'avg character count': sum(char_count) / len(char_count),
-        'parameters count': count_rwkv_parameters_in_billions(model)
+        'parameters count': count_rwkv_parameters_in_billions(model),
+        'avg bytes': sum([get_string_byte_size(text) for text in texts]) / len(texts),
+        'sample_count': len(texts)
     }
 
     # print(f'log probability sum: {sum(rwkv_test_data) / len(rwkv_test_data):.2f}')
@@ -235,7 +245,9 @@ def eval_hf_model(model, tokenizer, texts, chunk_size):
         'neg_log_prob_sum': sum(data) / len(data),
         'avg tokens': sum(token_length_list) / len(token_length_list),
         'avg character count': sum(char_count) / len(char_count),
-        'parameters count': get_model_parameters_in_billions(model)
+        'parameters count': get_model_parameters_in_billions(model),
+        'avg bytes': sum([get_string_byte_size(text) for text in texts]) / len(texts),
+        'sample_count': len(texts)
     }
 
     # print(f'log probability sum: {sum(data) / len(data):.2f}')
