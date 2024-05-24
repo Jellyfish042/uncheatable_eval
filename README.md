@@ -1,5 +1,7 @@
 # Uncheatable Eval
 
+[![DOI](https://zenodo.org/badge/732357528.svg)](https://zenodo.org/doi/10.5281/zenodo.11284692)
+
 ## Introduction
 Traditional LLM benchmarks are easily compromised by unintentional or intentional data leaks, 
 making many benchmarks unreliable and unable to truly reflect the capabilities of LLMs. 
