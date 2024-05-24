@@ -2,9 +2,9 @@ import subprocess
 import os
 
 model_names = [
-    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
+    'BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-1B5-v2-20231025-ctx4096.pth',
-    'stabilityai/stablelm-2-1_6b',
+    # 'stabilityai/stablelm-2-1_6b',
     # 'h2oai/h2o-danube-1.8b-base',
     # 'TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T',
     # 'EleutherAI/pythia-1.4b-v0',
