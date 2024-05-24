@@ -126,3 +126,16 @@ Changes in Model Rankings Over Time (Excluding Wikipedia Data)
 ## Proof of the Equivalence Between Compression Capability and Negative Log Probability Sum
 
 <img align="center" src="assets/proof_1.png">
+
+```
+@software{uncheatable_eval,
+  author       = {Kaifeng Tan},
+  title        = {Uncheatable Eval},
+  month        = may,
+  year         = 2024,
+  publisher    = {Zenodo},
+  version      = {0.1},
+  doi          = {10.5281/zenodo.11284692},
+  url          = {https://zenodo.org/record/11284692}
+}
+```
