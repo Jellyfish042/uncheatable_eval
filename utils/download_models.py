@@ -21,7 +21,6 @@ model_names = [
     # 'state-spaces/mamba-1.4b-hf',  # pip install causal-conv1d>=1.2.0 mamba-ssm, # use state-spaces/mamba-1.4b-hf instead of state-spaces/mamba-1.4b
 
     # 'BlinkDL/rwkv-6-world/RWKV-x060-World-3B-v2.1-20240417-ctx4096.pth',
-    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-3B-v2-20240228-ctx4096.pth',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-3B-v2-20231113-ctx4096.pth',
     # 'stabilityai/stablelm-3b-4e1t',
     # 'Qwen/Qwen1.5-4B',
