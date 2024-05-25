@@ -3,8 +3,7 @@
 [![DOI](https://zenodo.org/badge/732357528.svg)](https://zenodo.org/doi/10.5281/zenodo.11284692)
 
 ## Introduction
-Traditional LLM benchmarks are easily compromised by unintentional or intentional data leaks, 
-making many benchmarks unreliable and unable to truly reflect the capabilities of LLMs. 
+Traditional LLM benchmarks are easily compromised by unintentional or intentional data leakage, making many benchmarks unreliable and unable to truly reflect the capabilities of LLMs.
 
 Uncheatable Eval addresses this issue by testing LLMs on real-time, newly generated data from the internet, 
 ensuring that the evaluation is immune to data leaks and cannot be gamed.
