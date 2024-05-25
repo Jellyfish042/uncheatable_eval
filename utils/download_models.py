@@ -44,7 +44,6 @@ model_names = [
     # 'tiiuae/falcon-7b',
     # 'mosaicml/mpt-7b',  # pip install einops
     # 'EleutherAI/pythia-6.9b-v0',
-    # 'allenai/OLMo-7B',
     # 'BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
     # 'allenai/OLMo-1.7-7B-hf'
 ]

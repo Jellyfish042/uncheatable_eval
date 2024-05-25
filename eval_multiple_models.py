@@ -28,7 +28,6 @@ models = [
     # 'allenai/OLMo-1B',
     # 'Qwen/Qwen1.5-1.8B',
     # 'Qwen/Qwen-1_8B',
-    # 'mosaicml/mpt-1b-redpajama-200b',
     # 'princeton-nlp/Sheared-LLaMA-1.3B',
     # 'tiiuae/falcon-rw-1b',
     # 'OpenNLPLab/TransNormerLLM-1B',
@@ -59,9 +58,9 @@ models = [
     # 'tiiuae/falcon-7b',
     # 'mosaicml/mpt-7b',
     # 'EleutherAI/pythia-6.9b-v0',
-    # 'allenai/OLMo-7B',
     # 'BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
-    # 'allenai/OLMo-1.7-7B-hf'
+    # 'allenai/OLMo-1.7-7B-hf',
+    # 'CohereForAI/aya-23-8B'
 ]
 
 max_retries = 3
