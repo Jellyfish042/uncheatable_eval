@@ -1,6 +1,6 @@
 # Uncheatable Eval
 
-[![DOI](https://zenodo.org/badge/732357528.svg)](https://zenodo.org/doi/10.5281/zenodo.11284692)
+[![DOI](https://zenodo.org/badge/732357528.svg)](https://zenodo.org/doi/10.5281/zenodo.11284692) [![Leaderboard](https://img.shields.io/badge/%F0%9F%A4%97%20demo-Gradio-ff7c00)](https://huggingface.co/spaces/Jellyfish042/UncheatableEval)
 
 ## Introduction
 Traditional LLM benchmarks are easily compromised by unintentional or intentional data leakage, making many benchmarks unreliable and unable to truly reflect the capabilities of LLMs.
@@ -97,7 +97,7 @@ Wikipedia crawler does not support fetching data older than one month.
 
 ---
 
-<img align="center" src="assets/1b_data_24-05-23.png">
+<img align="center" src="assets/1b_cr_2405.png">
 
 ---
 
@@ -108,7 +108,17 @@ Wikipedia crawler does not support fetching data older than one month.
 
 ---
 
-<img align="center" src="assets/3b_data_24-05-23.png">
+<img align="center" src="assets/3b_cr_2405.png">
+
+---
+
+~7B models
+
+<img align="center" src="assets/7b_radar_2405.png">
+
+---
+
+<img align="center" src="assets/7b_cr_2405.png">
 
 ---
 
