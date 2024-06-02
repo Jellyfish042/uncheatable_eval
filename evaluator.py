@@ -6,6 +6,7 @@ from typing import Dict, Any
 import subprocess
 import sys
 from datetime import datetime
+from packaging import version
 
 import torch
 import torch.nn.functional as F
@@ -56,29 +57,45 @@ class Evaluator:
     @staticmethod
     def install_requirements(requirements: list[str]) -> None:
         """
-        Installs all packages listed in requirements.
+        Installs or upgrades packages based on the version requirements specified in the list.
 
-        :param requirements: List of packages to be installed.
+        :param requirements: List of packages with potential version specifiers.
         """
-        for package in requirements:
-            package_name = package.split('==')[0]
+        for requirement in requirements:
+            package_info = requirement.split('==') if '==' in requirement else (
+                requirement.split('>=') if '>=' in requirement else (
+                    requirement.split('<=') if '<=' in requirement else [requirement]))
+            package_name = package_info[0]
+            required_version_spec = requirement[len(package_name):]
+
             try:
                 # Check if the package is already installed
                 dist = importlib.metadata.distribution(package_name)
-                installed_version = dist.version
-                if '==' in package:
-                    required_version = package.split('==')[1]
-                    if installed_version == required_version:
-                        print(f"Package {package} is already installed and meets the requirement.")
+                installed_version = version.parse(dist.version)
+                if required_version_spec:
+                    # Extract the operator and the version from requirement
+                    operator = required_version_spec[:2] if required_version_spec[1] in ['=', '>'] else \
+                    required_version_spec[0]
+                    required_version = version.parse(required_version_spec.lstrip(operator))
+
+                    # Version comparison based on the operator
+                    if ((operator == '==' and installed_version == required_version) or
+                            (operator == '>=' and installed_version >= required_version) or
+                            (operator == '<=' and installed_version <= required_version)):
+                        print(f"Package {package_name} already installed and meets the requirement {requirement}.")
                     else:
-                        raise RuntimeError(f"Package {package_name} version conflict: {installed_version} != {required_version}")
+                        print(
+                            f"Package {package_name} version {installed_version} does not meet the requirement {requirement}, upgrading...")
+                        subprocess.check_call(
+                            [sys.executable, "-m", "pip", "install", f"{package_name}{required_version_spec}"])
                 else:
-                    print(f"Package {package} is already installed and meets the requirement.")
+                    print(f"Package {package_name} is already installed.")
             except importlib.metadata.PackageNotFoundError:
-                try:
-                    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-                except subprocess.CalledProcessError as e:
-                    raise RuntimeError(f"Error installing package {package}: {e}")
+                # Package is not installed, install it with the specified version
+                print(f"Package {package_name} is not installed, installing {requirement}...")
+                subprocess.check_call([sys.executable, "-m", "pip", "install", requirement])
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(f"Error installing or upgrading package {package_name}: {e}")
 
     @staticmethod
     def print_model_parameters_in_billions(model):
@@ -352,7 +369,7 @@ class Evaluator:
             else:
                 raise NotImplementedError
 
-            results['model_name_or_path_or_path'] = config.model_name_or_path
+            results['model_name_or_path'] = config.model_name_or_path
             results['tokenizer_name'] = config.tokenizer_name
             results['data_path'] = data_file
             results['chunk_size'] = config.chunk_size
