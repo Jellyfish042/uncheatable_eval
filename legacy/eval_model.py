@@ -10,7 +10,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from datetime import datetime
 import argparse
 
-RWKV4_TOKENIZER_FILE = "./support/20B_tokenizer.json"
+RWKV4_TOKENIZER_FILE = "../support/20B_tokenizer.json"
 
 
 def load_list_from_json(file_path):
