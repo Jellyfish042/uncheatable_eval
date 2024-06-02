@@ -36,7 +36,7 @@ Wikipedia crawler does not support fetching data older than one month.
 
 ### Evaluating a Single Model
 
-- Uncheatable Eval now supports the Hugging Face AutoModelForCausalLM and RWKV models (in .pth format). Change the configuration in eval_single.py `eval_single.py` to specify the model, model type, tokenizer, and data to be evaluated.
+- Uncheatable Eval now supports the Hugging Face `AutoModelForCausalLM` and RWKV models (in `.pth` format). Change the configuration in `eval_single.py` to specify the model, model type, tokenizer, and data to be evaluated.
 for example:
 ```python
 config = EvaluationConfig(
