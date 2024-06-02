@@ -15,6 +15,47 @@ Specifically, we calculate the sum of negative log probabilities of the models o
 
 *Note* : Uncheatable Eval only tests base models.
 
+# Guide
+
+**Uncheatable Eval** now supports the evaluation of typical **Hugging Face AutoModelForCausalLM** models and **RWKV** models. By following these three simple steps, you can easily obtain evaluation results:
+
+## Step 1: Prepare Datasets
+
+2 options for preparing your dataset:
+
+- Use the datasets provided in the `data` directory.
+- Open `multi_site_crawler.sh`, modify `START_DATE`, `END_DATE`, and `GITHUB_ACCESS_TOKEN`, then run the script to fetch real-time data.
+
+*Note* : 
+
+AO3 has a strict rate limit (20 requests per minute), you can implement your own proxy strategy in proxy.py and then set max_worker to a higher value to avoid rate limiting, or wait for a longer time.
+
+Wikipedia crawler does not support fetching data older than one month.
+
+## Step 2: Evaluate Models
+
+### Evaluating a Single Model
+
+- Uncheatable Eval now supports the Hugging Face AutoModelForCausalLM and RWKV models (in .pth format). Change the configuration in eval_single.py `eval_single.py` to specify the model, model type, tokenizer, and data to be evaluated.
+for example:
+```python
+config = EvaluationConfig(
+    model_name_or_path='stabilityai/stablelm-2-1_6b',  # huggingface model name or local model path
+    tokenizer_name='stabilityai/stablelm-2-1_6b',  # huggingface tokenizer name or local tokenizer path
+    model_type='hf',  # 'hf' for huggingface model, 'rwkv' for rwkv model
+    data=['data/ao3_english_20240501to20240515.json']  # list of data files to evaluate
+)
+```
+then run `eval_single.py` to evaluate the model.
+
+### Batch Evaluation of Multiple Models
+
+- You can also use `eval_multi.py` to batch evaluate multiple models on multiple datasets. Simply add the configurations in config_list and run the script.
+
+## Step 3: Parse and Visualize Results
+
+- Run `show_results.ipynb` to parse and visualize the evaluation results.
+
 ## Q&A
 ### Why Calculate the Sum of Negative Log Probabilities?
 First, the goal of language models, at least today's language models, is to generate text that is as realistic as possible, maximizing the probability of real text. They are trained and designed to do exactly this. Calculating the sum of negative log probabilities on real text is the most direct way to test this capability.
@@ -33,61 +74,6 @@ From my test results, accurately modeling these data is very challenging. I beli
 This is why we choose rigorous and verified texts such as arXiv papers and news reports, which typically have better quality. Additionally, a round of Uncheatable Eval evaluates a model over millions of tokens, increasing the reliability of the results.
 
 In fact, the model rankings obtained through Uncheatable Eval are very stable. For instance, the model ranked first in January's data is highly likely to remain first in February, March, April, May, and June, indicating that the data obtained through this method is sufficiently representative.
-
-# Guide
-
-**Uncheatable Eval** now supports the evaluation of typical **Hugging Face** models and **RWKV** models. By following these four simple steps, you can easily obtain evaluation results:
-
-## Step 1: Prepare Datasets
-
-2 options for preparing your dataset:
-
-- Use the datasets provided in the `data` directory.
-- Open `multi_site_crawler.sh`, modify `START_DATE`, `END_DATE`, and `GITHUB_ACCESS_TOKEN`, then run the script to fetch real-time data.
-
-*Note* : 
-
-AO3 has a strict rate limit (20 requests per minute), you can implement your own proxy strategy in proxy.py and then set max_worker to a higher value to avoid rate limiting, or wait for a longer time.
-
-Wikipedia crawler does not support fetching data older than one month.
-
-## Step 2: Prepare Models
-
-- **Uncheatable Eval** now supports the Hugging Face `AutoModelForCausalLM` and RWKV models (in .pth format). You can download the models on your own, or use the `utils/download_models.py` script to download multiple models to a temporary directory at once (please modify the list of models in the .py file as needed).
-
-## Step 3: Evaluate Models
-
-### Evaluating a Single Model
-
-- Use the `eval_model.py` script to evaluate a single model. Execute the following command:
-
-  ```
-  python3 eval_model.py --model <model> --model_type <model_type> --data <data> --log_path <log path> --chunk_size <chunk size>
-  ```
-
-  The parameters are as follows:
-
-  - `model`: The name of the Hugging Face model or the path to the RWKV model's weight file.
-  - `model_type`: The type of model, choose from `hf`, `rwkv`, `rwkv4pile`, `mamba`.
-      - `hf` for Hugging Face `AutoModelForCausalLM`.
-      - `rwkv` for RWKV-4-World models or newer RWKV models.
-      - `rwkv4pile` for RWKV-4-Pile models.
-      - `mamba` for evaluating Mamba models.
-  - `data`: The path to the dataset used for evaluation.
-  
-  By default, log data will be saved in the "logs" folder.
-
-### Batch Evaluation of Multiple Models
-
-- You can also use `eval_multiple_models.py` to batch evaluate multiple models on multiple datasets. Simply modify the dataset and model list in the file, and then run:
-
-  ```
-  python3 eval_multiple_models.py
-  ```
-
-## Step 4: Parse and Visualize Results
-
-- Run `show_results.ipynb` to parse and visualize the evaluation results.
 
 # Results
 
