@@ -55,6 +55,17 @@ class Evaluator:
             return json.load(file)
 
     @staticmethod
+    def default_serializer(obj):
+        if hasattr(obj, 'isoformat'):
+            return obj.isoformat()
+        elif hasattr(obj, 'tolist'):
+            return obj.tolist()
+        elif hasattr(obj, '__dict__'):
+            return obj.__dict__
+        else:
+            return str(obj)
+
+    @staticmethod
     def install_requirements(requirements: list[str]) -> None:
         """
         Installs or upgrades packages based on the version requirements specified in the list.
@@ -311,8 +322,7 @@ class Evaluator:
 
         return data_dict
 
-    @staticmethod
-    def make_log(data_dict, folder_path):
+    def make_log(self, data_dict, folder_path):
         if not os.path.exists(folder_path):
             try:
                 os.makedirs(folder_path)
@@ -327,7 +337,7 @@ class Evaluator:
 
         try:
             with open(file_path, 'w') as file:
-                json.dump(data_dict, file, indent=4)
+                json.dump(data_dict, file, indent=4, default=self.default_serializer)
             print(f"Dictionary saved successfully to {file_path}")
         except Exception as e:
             print(f"Error saving dictionary: {e}")
@@ -381,4 +391,4 @@ class Evaluator:
             self.make_log(results, config.log_path)
 
             print(f'Finished evaluating {config.model_name_or_path} on {data_file}')
-            print(json.dumps(results, indent=4, ensure_ascii=False))
+            print(json.dumps(results, indent=4, ensure_ascii=False, default=self.default_serializer))
