@@ -32,6 +32,11 @@ class EvaluationConfig:
     cache: str = './models/temp/'
     chunk_size: int = 1024
 
+    def __post_init__(self):
+        if not os.path.exists(self.cache):
+            if '.pth' in self.model_name and 'rwkv' in self.model_name.lower() and self.cache:
+                self.model_name = os.path.join(self.cache, self.model_name.split('/')[-1])
+
 
 class Evaluator:
     def __init__(self):

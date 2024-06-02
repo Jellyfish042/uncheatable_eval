@@ -12,7 +12,7 @@ data_list = [
 
 config_list = [
     # EvaluationConfig(
-    #     model_name='BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096',
+    #     model_name='BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
     #     tokenizer_name='rwkv_vocab_v20230424',
     #     model_type='rwkv',
     #     data=data_list
@@ -22,8 +22,6 @@ config_list = [
         tokenizer_name='stabilityai/stablelm-2-1_6b',
         model_type='hf',
         data=data_list,
-
-        add_bos=True,
     )
 ]
 
