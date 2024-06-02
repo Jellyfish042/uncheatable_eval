@@ -40,11 +40,16 @@ Wikipedia crawler does not support fetching data older than one month.
 for example:
 ```python
 config = EvaluationConfig(
-    model_name_or_path='stabilityai/stablelm-2-1_6b',  # huggingface model name or local model path
-    tokenizer_name='stabilityai/stablelm-2-1_6b',  # huggingface tokenizer name or local tokenizer path
-    model_type='hf',  # 'hf' for huggingface model, 'rwkv' for rwkv model
-    data=['data/ao3_english_20240501to20240515.json']  # list of data files to evaluate
-)  # more optional configurations can be found in evaluator.py
+    # huggingface model name or local model path
+    model_name_or_path='stabilityai/stablelm-2-1_6b',
+    # huggingface tokenizer name or local tokenizer path
+    tokenizer_name='stabilityai/stablelm-2-1_6b',
+    # 'hf' for huggingface model, 'rwkv' for rwkv model
+    model_type='hf',
+    # list of data files to evaluate
+    data=['data/ao3_english_20240501to20240515.json']
+)
+# more optional configurations can be found in evaluator.py
 ```
 then run `eval_single.py` to evaluate the model.
 
