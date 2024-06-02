@@ -23,15 +23,15 @@ class EvaluationConfig:
     model_args: Dict[Any, Any] = field(default_factory=lambda: {
         'device_map': 'auto',
         'trust_remote_code': True,
-    })
-    tokenizer_args: Dict[str, str] = field(default_factory=dict)
+    })  # other arguments that can be passed to the Hugging Face AutoModelForCausalLM
+    tokenizer_args: Dict[str, str] = field(default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoTokenizer
 
-    requirements: list[str] = field(default_factory=list)
+    requirements: list[str] = field(default_factory=list)  # list of packages, will be installed automatically
 
-    add_bos: bool = False
-    log_path: str = './logs/'
-    cache: str = './models/temp/'
-    chunk_size: int = 1024
+    add_bos: bool = False  # whether to add bos token to the input sequence
+    log_path: str = './logs/'  # path to save the evaluation results
+    cache: str = './models/temp/'  # cache directory for the models
+    chunk_size: int = 1024  # input tokens will be split into chunks of this size
 
     def __post_init__(self):
         if not os.path.exists(self.cache):

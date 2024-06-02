@@ -44,7 +44,7 @@ config = EvaluationConfig(
     tokenizer_name='stabilityai/stablelm-2-1_6b',  # huggingface tokenizer name or local tokenizer path
     model_type='hf',  # 'hf' for huggingface model, 'rwkv' for rwkv model
     data=['data/ao3_english_20240501to20240515.json']  # list of data files to evaluate
-)
+)  # more optional configurations can be found in evaluator.py
 ```
 then run `eval_single.py` to evaluate the model.
 
