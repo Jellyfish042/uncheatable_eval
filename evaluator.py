@@ -259,8 +259,9 @@ class Evaluator:
         token_length_list = []
         char_count = []
 
-        bos_token = tokenizer.encode(tokenizer.bos_token)
-        len_bos = len(bos_token)
+        if add_bos:
+            bos_token = tokenizer.encode(tokenizer.bos_token)
+            len_bos = len(bos_token)
 
         for idx, sample in tqdm(enumerate(texts), total=len(texts)):
 
