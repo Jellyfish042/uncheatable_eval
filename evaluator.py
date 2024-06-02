@@ -264,7 +264,7 @@ class Evaluator:
 
                 neg_log_prob_temp = 0
                 if add_bos:
-                    for begin in range(0, seq_length - len_bos, chunk_size):
+                    for begin in range(0, seq_length, chunk_size - len_bos):
                         input_chunk = inputs['input_ids'][:, begin: begin + chunk_size - len_bos]
 
                         input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk],
