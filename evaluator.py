@@ -34,7 +34,7 @@ class EvaluationConfig:
     chunk_size: int = 1024  # input tokens will be split into chunks of this size
 
     def __post_init__(self):
-        if not os.path.exists(self.cache):
+        if not os.path.exists(self.model_name_or_path):
             if '.pth' in self.model_name_or_path and 'rwkv' in self.model_name_or_path.lower() and self.cache:
                 self.model_name_or_path = os.path.join(self.cache, self.model_name_or_path.split('/')[-1])
 
