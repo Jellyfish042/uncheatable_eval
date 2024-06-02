@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 @dataclass
 class EvaluationConfig:
-    model_name: str
+    model_name_or_path: str
     tokenizer_name: str
     model_type: str
     data: list[str]
@@ -34,8 +34,8 @@ class EvaluationConfig:
 
     def __post_init__(self):
         if not os.path.exists(self.cache):
-            if '.pth' in self.model_name and 'rwkv' in self.model_name.lower() and self.cache:
-                self.model_name = os.path.join(self.cache, self.model_name.split('/')[-1])
+            if '.pth' in self.model_name_or_path and 'rwkv' in self.model_name_or_path.lower() and self.cache:
+                self.model_name_or_path = os.path.join(self.cache, self.model_name_or_path.split('/')[-1])
 
 
 class Evaluator:
@@ -62,12 +62,12 @@ class Evaluator:
         """
         for package in requirements:
             package_name = package.split('==')[0]
-            required_version = package.split('==')[1]
             try:
                 # Check if the package is already installed
                 dist = importlib.metadata.distribution(package_name)
                 installed_version = dist.version
                 if '==' in package:
+                    required_version = package.split('==')[1]
                     if installed_version == required_version:
                         print(f"Package {package} is already installed and meets the requirement.")
                     else:
@@ -100,7 +100,7 @@ class Evaluator:
         hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name,
                                                      cache_dir=config.cache,
                                                      **config.tokenizer_args)
-        hf_model = AutoModelForCausalLM.from_pretrained(config.model_name,
+        hf_model = AutoModelForCausalLM.from_pretrained(config.model_name_or_path,
                                                         cache_dir=config.cache,
                                                         **config.model_args
                                                         ).eval()
@@ -116,7 +116,7 @@ class Evaluator:
         from rwkv.model import RWKV
         from rwkv.utils import PIPELINE
 
-        rwkv_model = RWKV(model=config.model_name, strategy='cuda fp16')
+        rwkv_model = RWKV(model=config.model_name_or_path, strategy='cuda fp16')
         rwkv_pipeline = PIPELINE(rwkv_model, config.tokenizer_name)
         rwkv_tokenizer = rwkv_pipeline.tokenizer
 
@@ -132,7 +132,7 @@ class Evaluator:
         from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
 
         tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name)
-        model = MambaLMHeadModel.from_pretrained(config.model_name, device="cuda", dtype=torch.float16)
+        model = MambaLMHeadModel.from_pretrained(config.model_name_or_path, device="cuda", dtype=torch.float16)
         model.device = torch.device('cuda')
 
         self.print_model_parameters_in_billions(model)
@@ -317,6 +317,10 @@ class Evaluator:
 
     def evaluate(self, config: EvaluationConfig):
 
+        # install requirements
+        if len(config.requirements) > 0:
+            self.install_requirements(config.requirements)
+
         # load model
         if config.model_type == 'hf':
             model, tokenizer = self.load_hf_model(config)
@@ -329,7 +333,7 @@ class Evaluator:
 
         for data_file in config.data:
 
-            print(f'Evaluating {config.model_name} on {data_file}')
+            print(f'Evaluating {config.model_name_or_path} on {data_file}')
 
             # load data
             texts = self.load_list_from_json(data_file)
@@ -348,7 +352,7 @@ class Evaluator:
             else:
                 raise NotImplementedError
 
-            results['model_name_or_path'] = config.model_name
+            results['model_name_or_path_or_path'] = config.model_name_or_path
             results['tokenizer_name'] = config.tokenizer_name
             results['data_path'] = data_file
             results['chunk_size'] = config.chunk_size
@@ -359,5 +363,5 @@ class Evaluator:
 
             self.make_log(results, config.log_path)
 
-            print(f'Finished evaluating {config.model_name} on {data_file}')
+            print(f'Finished evaluating {config.model_name_or_path} on {data_file}')
             print(json.dumps(results, indent=4, ensure_ascii=False))
