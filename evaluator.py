@@ -20,11 +20,8 @@ class EvaluationConfig:
     model_type: str
     data: list[str]
 
-    model_args: Dict[Any, Any] = field(default_factory=lambda: {
-        'device_map': 'auto',
-        'trust_remote_code': True,
-    })  # other arguments that can be passed to the Hugging Face AutoModelForCausalLM
-    tokenizer_args: Dict[str, str] = field(default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoTokenizer
+    model_args: Dict[Any, Any] = field(default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoModelForCausalLM
+    tokenizer_args: Dict[Any, Any] = field(default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoTokenizer
 
     requirements: list[str] = field(default_factory=list)  # list of packages, will be installed automatically
 
@@ -34,6 +31,12 @@ class EvaluationConfig:
     chunk_size: int = 1024  # input tokens will be split into chunks of this size
 
     def __post_init__(self):
+        default_model_args = {'device_map': 'auto', 'trust_remote_code': True}
+        self.model_args = {**default_model_args, **self.model_args}
+
+        default_tokenizer_args = {'trust_remote_code': True}
+        self.tokenizer_args = {**default_tokenizer_args, **self.tokenizer_args}
+
         if not os.path.exists(self.model_name_or_path):
             if '.pth' in self.model_name_or_path and 'rwkv' in self.model_name_or_path.lower() and self.cache:
                 self.model_name_or_path = os.path.join(self.cache, self.model_name_or_path.split('/')[-1])
