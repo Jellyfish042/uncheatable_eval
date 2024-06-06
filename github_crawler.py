@@ -16,6 +16,7 @@ class GitHubCrawler:
 
     def __init__(self):
         self.lock = Lock()
+        self.crawled_contents = set()
 
     def print_rate_limit_status(self, headers):
         with self.lock:
@@ -144,7 +145,11 @@ class GitHubCrawler:
                 content = self.get_content(url_info['html_url'].replace('https://github.com/', ''), target_file,
                                            access_token)
                 if content is not None and len(content) > min_length:
-                    return content
+                    content_hash = hash(content)
+                    with self.lock:
+                        if content_hash not in self.crawled_contents:
+                            self.crawled_contents.add(content_hash)
+                            return content
         except:
             return None
 
