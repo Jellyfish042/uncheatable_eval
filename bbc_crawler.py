@@ -16,6 +16,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 class BBCCrawler:
     def __init__(self):
         self.stop_event = threading.Event()
+        self.processed_urls = set()
+        self.url_lock = threading.Lock()
         pass
 
     @staticmethod
@@ -151,7 +153,10 @@ class BBCCrawler:
                     if no_content_page == no_content_page_allowed:
                         break
                     for link in search_links:
-                        url_queue.put(link)
+                        with self.url_lock:
+                            if link not in self.processed_urls:
+                                self.processed_urls.add(link)
+                                url_queue.put(link)
 
     def consumer(self, url_queue, min_length, max_length, all_news, pbar, max_samples):
         while not self.stop_event.is_set():
