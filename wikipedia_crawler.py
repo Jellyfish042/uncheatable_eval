@@ -26,14 +26,20 @@ class WikipediaCrawler:
         return session
 
     @staticmethod
-    def query(request, session):
+    def query(request, session, language='english'):
+        if language == 'english':
+            url = "https://en.wikipedia.org/w/api.php"
+        elif language == 'chinese':
+            url = "https://zh.wikipedia.org/w/api.php"
+        else:
+            raise ValueError(f"Language '{language}' is not supported.")
         request['action'] = 'query'
         request['format'] = 'json'
         last_continue = {}
         while True:
             req = request.copy()
             req.update(last_continue)
-            result = session.get('https://en.wikipedia.org/w/api.php', params=req).json()
+            result = session.get(url, params=req).json()
             if 'error' in result:
                 raise Exception(result['error'])
             if 'warnings' in result:
@@ -45,14 +51,20 @@ class WikipediaCrawler:
             last_continue = result['continue']
 
     @staticmethod
-    def get_page_content(title, session):
-        url = "https://en.wikipedia.org/w/api.php"
+    def get_page_content(title, session, language='english'):
         params = {
             "action": "parse",
             "page": title,
             "prop": "text",
-            "format": "json"
+            "format": "json",
         }
+        if language == 'english':
+            url = "https://en.wikipedia.org/w/api.php"
+        elif language == 'chinese':
+            url = "https://zh.wikipedia.org/w/api.php"
+            params['variant'] = 'zh-cn'
+        else:
+            raise ValueError(f"Language '{language}' is not supported.")
 
         try:
             response = session.get(url, params=params)
@@ -74,8 +86,25 @@ class WikipediaCrawler:
                     references.parent.decompose()
                 for table in soup.find_all('table'):
                     table.decompose()
+                for math in soup.find_all('math'):
+                    math.decompose()
+                # for span in soup.find_all('span'):
+                #     if 'style' in span.attrs:
+                #         span.decompose()
 
-                return soup.get_text()
+                # Print the structured HTML
+                # print("Processed HTML Structure:")
+                # print(soup.prettify())
+                text = soup.get_text()
+
+                word_list = ['\n参考', '\n注释', '\n注脚', '\n脚注', '\n参考资料', '\n参考文献', '\n参考来源', '\n资料来源', '\n参见', '\n外部链接']
+
+                for word in word_list:
+                    index = text.find(word)
+                    if index != -1:
+                        text = text[:index]
+
+                return text
             else:
                 return None
 
@@ -94,8 +123,8 @@ class WikipediaCrawler:
     def remove_text_in_brackets(text):
         return re.sub(r'\[.*?\]', '', text)
 
-    def process_title(self, title, session, min_length, max_length):
-        content = self.get_page_content(title, session)
+    def process_title(self, title, session, min_length, max_length, language):
+        content = self.get_page_content(title, session, language)
         if content is not None:
             content = self.replace_multiple_newlines(content)
             content = self.remove_text_in_brackets(content)
@@ -106,6 +135,7 @@ class WikipediaCrawler:
     def pipeline(self,
                  start_time,
                  end_time,
+                 language='english',
                  batch_size=500,
                  max_samples=1000,
                  min_length=2000,
@@ -125,7 +155,7 @@ class WikipediaCrawler:
 
         session = self.create_session()
 
-        all_data = []
+        all_data = set()
 
         pbar = tqdm(total=max_samples)
 
@@ -149,19 +179,22 @@ class WikipediaCrawler:
 
         def process_batch(titles):
             with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-                futures = {executor.submit(self.process_title, title, session, min_length, max_length): title for title
+                futures = {executor.submit(self.process_title, title, session, min_length, max_length, language): title for title
                            in
                            titles}
 
                 for future in concurrent.futures.as_completed(futures):
                     content = future.result()
                     if content is not None:
-                        all_data.append(content)
-                        pbar.update(1)
+                        all_data.add(content)
+                        # print(content)
+                        # print('*' * 100)
+                        pbar.n = len(all_data)
+                        pbar.refresh()
                     if len(all_data) >= max_samples:
                         break
 
-        for result in self.query(request, session):
+        for result in self.query(request, session, language):
             recent_changes = result.get('recentchanges', [])
             titles = [change['title'] for change in recent_changes]
 
@@ -171,7 +204,7 @@ class WikipediaCrawler:
                 break
 
         pbar.close()
-        return all_data
+        return list(all_data)
 
 
 if __name__ == '__main__':
@@ -183,9 +216,9 @@ if __name__ == '__main__':
                         help='The start date (YYYY-MM-DD).')
     parser.add_argument('--end_date', type=str, required=True,
                         help='The end date (YYYY-MM-DD).')
+    parser.add_argument('--language', type=str, default='english', choices=['english'],
+                        help='Programming language to filter the repositories.')  # Chinese is not supported yet
 
-    # parser.add_argument('--language', type=str, default='english', choices=['english', 'chinese'],
-    #                     help='Programming language to filter the repositories.')
     parser.add_argument('--max_samples', type=int, default=1000,
                         help='Maximum number of works to crawl. Default is 1000.')
     parser.add_argument('--min_length', type=int, default=2000,
@@ -203,6 +236,7 @@ if __name__ == '__main__':
     crawler = WikipediaCrawler()
     my_data = crawler.pipeline(start_time=start_time,
                                end_time=end_time,
+                               language=args.language,
                                max_samples=args.max_samples,
                                min_length=args.min_length,
                                max_length=args.max_length,
