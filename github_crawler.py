@@ -178,7 +178,8 @@ class GitHubCrawler:
 
         assert batch_size % 100 == 0
 
-        all_data = []
+        all_data = set()
+        lock = Lock()
         global_idx = 0
         pbar = tqdm(total=max_repos)
         # date_list = self.get_date_list(start_date, end_date)
@@ -196,17 +197,16 @@ class GitHubCrawler:
                 for future in as_completed(future_to_url):
                     content = future.result()
                     if content:
-                        all_data.append(content)
-                        pbar.update(1)
+                        with lock:
+                            all_data.add(content[:max_length])
+                            pbar.update(1)
                     if len(all_data) >= max_repos:
                         break
 
             global_idx += 1
         pbar.close()
 
-        all_data = [x[:max_length] for x in all_data]
-
-        return all_data
+        return list(all_data)[:max_repos]
 
 
 def check_date_format(date_str):
@@ -234,7 +234,6 @@ if __name__ == '__main__':
                         help='JSON file name')
     parser.add_argument('--language', type=str, default='python', choices=['python', 'cpp', 'java'],
                         help='Programming language to filter the repositories. Choices are "python" or "cpp". Default is "python".')
-
 
     parser.add_argument('--max_repos', type=int, default=1000,
                         help='Maximum number of repositories to crawl. Default is 1000.')
