@@ -248,7 +248,7 @@ class ArxivCrawler:
                 if len(all_data) >= max_samples:
                     break
 
-        return all_data[:max_samples]
+        return list(all_data)[:max_samples]
 
     def pipeline(self,
                  start_date,
