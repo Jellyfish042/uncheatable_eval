@@ -119,7 +119,7 @@ class AO3Crawler:
         url_template = 'https://archiveofourown.org/works/search?commit=Search&page=<PAGE>&work_search[language_id]=<LANGUAGE_ID>&work_search%5Brevised_at=<TIME>&work_search[single_chapter]=0&work_search[sort_column]=created_at&work_search[sort_direction]=desc'
 
         pbar = tqdm(total=num_works)
-        all_works = []
+        all_works = set()
 
         def fetch_and_process_work(work_id, proxies=None):
             try:
@@ -147,15 +147,16 @@ class AO3Crawler:
                         for future in as_completed(futures):
                             result = future.result()
                             if result:
-                                all_works.append(result)
-                                pbar.update(1)
+                                all_works.add(result)
+                                pbar.n = len(all_works)
+                                pbar.refresh()
                                 if len(all_works) >= num_works:
-                                    return all_works
+                                    return list(all_works)[:num_works]
                 else:
                     pass
                     # print(f"Failed to retrieve content, status code: {response.status_code}")
 
-            return all_works[:num_works]
+            return list(all_works)[:num_works]
 
         else:
             for page in range(max_page):
@@ -180,8 +181,9 @@ class AO3Crawler:
                         time.sleep(sleep_time)
 
                         if len(final_text) > min_char:
-                            all_works.append(final_text)
-                            pbar.update(1)
+                            all_works.add(final_text)
+                            pbar.n = len(all_works)
+                            pbar.refresh()
 
                             if len(all_works) >= num_works:
                                 break
@@ -193,7 +195,7 @@ class AO3Crawler:
                 if len(all_works) >= num_works:
                     break
 
-            return all_works[:num_works]
+            return list(all_works)[:num_works]
 
 
 LANGUAGE_MAP = {
