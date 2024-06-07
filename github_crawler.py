@@ -199,7 +199,8 @@ class GitHubCrawler:
                     if content:
                         with lock:
                             all_data.add(content[:max_length])
-                            pbar.update(1)
+                            pbar.n = len(all_data)
+                            pbar.refresh()
                     if len(all_data) >= max_repos:
                         break
 

@@ -221,11 +221,11 @@ class ArxivCrawler:
                         max_length=5000,
                         max_workers=16, ):
 
-        all_data = []
+        all_data = set()
 
         start_idx = 0
 
-        while True:
+        while len(all_data) < max_samples:
             url = f'https://arxiv.org/search/advanced?advanced=1&terms-0-operator=AND&terms-0-term=&terms-0-field=title&classification-{classification}=y&classification-include_cross_list=exclude&date-year=&date-filter_by=date_range&date-from_date={start_date}&date-to_date={end_date}&date-date_type=submitted_date_first&abstracts=hide&size={page_size}&order=-announced_date_first&start={start_idx}'
             response = requests.get(url)
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -240,17 +240,15 @@ class ArxivCrawler:
                 try:
                     text = self.download_and_extract_tex_file(src_link)
                     if len(text) > min_length:
-                        all_data.append(text[:max_length])
+                        all_data.add(text[:max_length])
                         print(f"Downloaded {len(all_data)} papers")
                 except Exception as e:
                     # print(f"Error: {e}")
                     continue
                 if len(all_data) >= max_samples:
                     break
-            if len(all_data) >= max_samples:
-                break
 
-        return all_data
+        return all_data[:max_samples]
 
     def pipeline(self,
                  start_date,
@@ -266,11 +264,11 @@ class ArxivCrawler:
         assert page_size >= 50, "page_size must be greater than 50"
         assert page_size <= 200, "page_size must be less than 200"
 
-        all_data = []
+        all_data = set()
         start_idx = 0
         pbar = tqdm(total=max_samples)
 
-        while True:
+        while len(all_data) < max_samples:
             url = f'https://arxiv.org/search/advanced?advanced=1&terms-0-operator=AND&terms-0-term=&terms-0-field=title&classification-{classification}=y&classification-include_cross_list=exclude&date-year=&date-filter_by=date_range&date-from_date={start_date}&date-to_date={end_date}&date-date_type=submitted_date_first&abstracts=hide&size={page_size}&order=-announced_date_first&start={start_idx}'
             for attempt in range(retries):
                 try:
@@ -301,14 +299,13 @@ class ArxivCrawler:
                 for future in concurrent.futures.as_completed(futures):
                     result = future.result()
                     if result is not None:
-                        all_data.append(result[:max_length])
-                        pbar.update(1)
+                        all_data.add(result[:max_length])
+                        pbar.n = len(all_data)
+                        pbar.refresh()
                         if len(all_data) >= max_samples:
                             break
-            if len(all_data) >= max_samples:
-                break
 
-        return all_data[:max_samples]
+        return list(all_data)[:max_samples]
 
 
 if __name__ == '__main__':
