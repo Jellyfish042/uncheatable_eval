@@ -11,6 +11,17 @@ echo "Starting data collection from $START_DATE to $END_DATE"
 
 DATE_RANGE="${START_DATE//-/}to${END_DATE//-/}"
 
+# GitHub
+GITHUB_FILE_NAME="github_cpp_${DATE_RANGE}.json"
+GITHUB_LANGUAGE="cpp"
+echo "Collecting GitHub data for language $GITHUB_LANGUAGE from $START_DATE to $END_DATE"
+python3 github_crawler.py --start_date $START_DATE --end_date $END_DATE --file_name $GITHUB_FILE_NAME --language $GITHUB_LANGUAGE --access_token $GITHUB_ACCESS_TOKEN
+if [ $? -eq 0 ]; then
+    echo "Data saved to $GITHUB_FILE_NAME"
+else
+    echo "Failed to collect GitHub data for language $GITHUB_LANGUAGE"
+fi
+
 # ArXiv
 CLASSIFICATION1="computer_science"
 FILE_NAME1="arxiv_${CLASSIFICATION1}_${DATE_RANGE}.json"
@@ -30,27 +41,6 @@ if [ $? -eq 0 ]; then
     echo "Data saved to $FILE_NAME2"
 else
     echo "Failed to collect ArXiv data for classification $CLASSIFICATION2"
-fi
-
-# GitHub
-GITHUB_FILE_NAME="github_cpp_${DATE_RANGE}.json"
-GITHUB_LANGUAGE="cpp"
-echo "Collecting GitHub data for language $GITHUB_LANGUAGE from $START_DATE to $END_DATE"
-python3 github_crawler.py --start_date $START_DATE --end_date $END_DATE --file_name $GITHUB_FILE_NAME --language $GITHUB_LANGUAGE --access_token $GITHUB_ACCESS_TOKEN
-if [ $? -eq 0 ]; then
-    echo "Data saved to $GITHUB_FILE_NAME"
-else
-    echo "Failed to collect GitHub data for language $GITHUB_LANGUAGE"
-fi
-
-GITHUB_FILE_NAME="github_python_${DATE_RANGE}.json"
-GITHUB_LANGUAGE="python"
-echo "Collecting GitHub data for language $GITHUB_LANGUAGE from $START_DATE to $END_DATE"
-python3 github_crawler.py --start_date $START_DATE --end_date $END_DATE --file_name $GITHUB_FILE_NAME --language $GITHUB_LANGUAGE --access_token $GITHUB_ACCESS_TOKEN
-if [ $? -eq 0 ]; then
-    echo "Data saved to $GITHUB_FILE_NAME"
-else
-    echo "Failed to collect GitHub data for language $GITHUB_LANGUAGE"
 fi
 
 # Wikipedia
@@ -84,5 +74,15 @@ fi
 #else
 #    echo "Failed to collect AO3 data"
 #fi
+
+GITHUB_FILE_NAME="github_python_${DATE_RANGE}.json"
+GITHUB_LANGUAGE="python"
+echo "Collecting GitHub data for language $GITHUB_LANGUAGE from $START_DATE to $END_DATE"
+python3 github_crawler.py --start_date $START_DATE --end_date $END_DATE --file_name $GITHUB_FILE_NAME --language $GITHUB_LANGUAGE --access_token $GITHUB_ACCESS_TOKEN
+if [ $? -eq 0 ]; then
+    echo "Data saved to $GITHUB_FILE_NAME"
+else
+    echo "Failed to collect GitHub data for language $GITHUB_LANGUAGE"
+fi
 
 echo "Data collection completed for all sources."
