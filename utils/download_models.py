@@ -19,6 +19,8 @@ model_names = [
     # 'OpenNLPLab/TransNormerLLM-1B',
     # 'microsoft/phi-1_5',
     # 'state-spaces/mamba-1.4b-hf',  # pip install causal-conv1d>=1.2.0 mamba-ssm, # use state-spaces/mamba-1.4b-hf instead of state-spaces/mamba-1.4b
+    # 'apple/OpenELM-1_1B',
+    # 'Qwen/Qwen2-1.5B',
 
     # 'BlinkDL/rwkv-6-world/RWKV-x060-World-3B-v2.1-20240417-ctx4096.pth',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-3B-v2-20231113-ctx4096.pth',
@@ -33,6 +35,11 @@ model_names = [
     # 'princeton-nlp/Sheared-LLaMA-2.7B',
     # 'BlinkDL/rwkv-4-pile-3b/RWKV-4-Pile-3B-20221110-ctx4096.pth',
     # 'BlinkDL/rwkv-4-world/RWKV-4-World-3B-v1-20230619-ctx4096.pth',
+    # 'apple/OpenELM-3B',
+    # 'google/gemma-2b',
+    # 'microsoft/Phi-3-mini-4k-instruct',
+    # 'google/recurrentgemma-2b',
+    # 'microsoft/phi-2',
 
     # 'meta-llama/Meta-Llama-3-8B',  # pip install accelerate
     # 'mistralai/Mistral-7B-v0.1',
