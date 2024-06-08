@@ -1,14 +1,10 @@
 from argparse import ArgumentParser
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from huggingface_hub import hf_hub_download
-import torch
-import gc
 import traceback
 import os
 
 if __name__ == '__main__':
 
-    os.environ['HF_HOME'] = './models/temp/'
+    os.environ['HF_HOME'] = '../models/temp/'
 
     parser = ArgumentParser()
     parser.add_argument('--model_name', type=str, required=True)
@@ -25,6 +21,7 @@ if __name__ == '__main__':
         print(f'# downloading: {path}')
         try:
             if 'BlinkDL' in path:
+                from huggingface_hub import hf_hub_download
 
                 repo_name = '/'.join(path.split('/', 2)[:-1])
                 filename = path.split('/', 2)[-1]
@@ -33,15 +30,24 @@ if __name__ == '__main__':
                                 filename=filename,
                                 local_dir=cache_dir,
                                 cache_dir=cache_dir)
-                print('# download successful')
 
+                print('# download successful')
                 break
             elif path.startswith("state-spaces/mamba-") and 'hf' not in path:
                 from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
+                from transformers import AutoTokenizer
+
                 tokenizer = AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
                 model = MambaLMHeadModel.from_pretrained(args.model_name, device='cpu')
+
+                print('# download successful')
+                break
             else:
-                tokenizer = AutoTokenizer.from_pretrained(path, cache_dir=cache_dir)
+                from transformers import AutoTokenizer, AutoModelForCausalLM
+
+                tokenizer = AutoTokenizer.from_pretrained(path,
+                                                          cache_dir=cache_dir,
+                                                          trust_remote_code=True)
                 model = AutoModelForCausalLM.from_pretrained(path,
                                                              device_map="cpu",
                                                              force_download=False,
@@ -49,9 +55,6 @@ if __name__ == '__main__':
                                                              cache_dir=cache_dir).eval()
 
                 del model, tokenizer
-
-                gc.collect()
-                torch.cuda.empty_cache()
                 print('# download successful')
                 break
 
