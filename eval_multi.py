@@ -350,16 +350,11 @@ config_list = [
     #     tokenizer_name='microsoft/Phi-3-small-8k-instruct',
     #     model_type='hf',
     #     data=data_list,
+    #     model_args={'torch_dtype': "auto", 'device_map': 'cuda:0'}
     # ),
     # EvaluationConfig(
     #     model_name_or_path='openlm-research/open_llama_7b_v2',
     #     tokenizer_name='openlm-research/open_llama_7b_v2',
-    #     model_type='hf',
-    #     data=data_list,
-    # ),
-    # EvaluationConfig(
-    #     model_name_or_path='Zyphra/Zamba-7B-v1',
-    #     tokenizer_name='Zyphra/Zamba-7B-v1',
     #     model_type='hf',
     #     data=data_list,
     # ),
