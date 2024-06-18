@@ -289,14 +289,14 @@ config_list = [
     # ),
     # EvaluationConfig(
     #     model_name_or_path='BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
-    #     tokenizer_name='BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
+    #     tokenizer_name='rwkv_vocab_v20230424',
     #     model_type='rwkv',
     #     data=data_list,
     #     requirements=['rwkv']
     # ),
     # EvaluationConfig(
     #     model_name_or_path='BlinkDL/rwkv-5-world/RWKV-5-World-7B-v2-20240128-ctx4096.pth',
-    #     tokenizer_name='BlinkDL/rwkv-5-world/RWKV-5-World-7B-v2-20240128-ctx4096.pth',
+    #     tokenizer_name='rwkv_vocab_v20230424',
     #     model_type='rwkv',
     #     data=data_list,
     #     requirements=['rwkv']
