@@ -7,6 +7,7 @@ import subprocess
 import sys
 from datetime import datetime
 from packaging import version
+import gc
 
 import torch
 import torch.nn.functional as F
@@ -396,3 +397,8 @@ class Evaluator:
 
             print(f'Finished evaluating {config.model_name_or_path} on {data_file}')
             print(json.dumps(results, indent=4, ensure_ascii=False, default=self.default_serializer))
+
+        del model
+        del tokenizer
+        gc.collect()
+        torch.cuda.empty_cache()
