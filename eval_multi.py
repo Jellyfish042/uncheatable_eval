@@ -1,15 +1,16 @@
 from evaluator import EvaluationConfig, Evaluator
 import time
 import torch
+import gc
 
 data_list = [
-    'data/ao3_english_20240501to20240515.json',
-    'data/arxiv_computer_science_20240501to20240515.json',
-    'data/arxiv_physics_20240501to20240515.json',
-    'data/bbc_news_20240501to20240515.json',
-    'data/github_cpp_20240501to20240515.json',
-    'data/github_python_20240501to20240515.json',
-    'data/wikipedia_english_20240501to20240515.json'
+    'data/ao3_english_20240601to20240615.json',
+    'data/arxiv_computer_science_20240601to20240615.json',
+    'data/arxiv_physics_20240601to20240615.json',
+    'data/bbc_news_20240601to20240615.json',
+    'data/github_cpp_20240601to20240615.json',
+    'data/github_python_20240601to20240615.json',
+    'data/wikipedia_english_20240601to20240615.json'
 ]
 
 config_list = [
@@ -135,6 +136,12 @@ config_list = [
     #     data=data_list,
     #     add_bos=True,
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path='IndexTeam/Index-1.9B',
+    #     tokenizer_name='IndexTeam/Index-1.9B',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
 
     # ~3B
     # EvaluationConfig(
@@ -254,6 +261,140 @@ config_list = [
     #     data=data_list,
     # ),
 
+    # ~7B
+    # EvaluationConfig(
+    #     model_name_or_path='meta-llama/Meta-Llama-3-8B',
+    #     tokenizer_name='meta-llama/Meta-Llama-3-8B',
+    #     model_type='hf',
+    #     data=data_list,
+    #     requirements=['accelerate']
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='mistralai/Mistral-7B-v0.1',
+    #     tokenizer_name='mistralai/Mistral-7B-v0.1',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='Qwen/Qwen2-7B',
+    #     tokenizer_name='Qwen/Qwen2-7B',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='Qwen/Qwen1.5-7B',
+    #     tokenizer_name='Qwen/Qwen1.5-7B',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
+    #     tokenizer_name='BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
+    #     model_type='rwkv',
+    #     data=data_list,
+    #     requirements=['rwkv']
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='BlinkDL/rwkv-5-world/RWKV-5-World-7B-v2-20240128-ctx4096.pth',
+    #     tokenizer_name='BlinkDL/rwkv-5-world/RWKV-5-World-7B-v2-20240128-ctx4096.pth',
+    #     model_type='rwkv',
+    #     data=data_list,
+    #     requirements=['rwkv']
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='meta-llama/Llama-2-7b-hf',
+    #     tokenizer_name='meta-llama/Llama-2-7b-hf',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='TRI-ML/mamba-7b-rw',
+    #     tokenizer_name='TRI-ML/mamba-7b-rw',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='tiiuae/falcon-7b',
+    #     tokenizer_name='tiiuae/falcon-7b',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='mosaicml/mpt-7b',
+    #     tokenizer_name='mosaicml/mpt-7b',
+    #     model_type='hf',
+    #     data=data_list,
+    #     requirements=['einops']
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='EleutherAI/pythia-6.9b-v0',
+    #     tokenizer_name='EleutherAI/pythia-6.9b-v0',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='allenai/OLMo-1.7-7B-hf',
+    #     tokenizer_name='allenai/OLMo-1.7-7B-hf',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='google/gemma-7b',
+    #     tokenizer_name='google/gemma-7b',
+    #     model_type='hf',
+    #     data=data_list,
+    #     add_bos=True,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='microsoft/Phi-3-small-8k-instruct',
+    #     tokenizer_name='microsoft/Phi-3-small-8k-instruct',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='openlm-research/open_llama_7b_v2',
+    #     tokenizer_name='openlm-research/open_llama_7b_v2',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='Zyphra/Zamba-7B-v1',
+    #     tokenizer_name='Zyphra/Zamba-7B-v1',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='m-a-p/neo_7b',
+    #     tokenizer_name='m-a-p/neo_7b',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='CohereForAI/aya-23-8B',
+    #     tokenizer_name='CohereForAI/aya-23-8B',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+
+    # ~14B
+    # EvaluationConfig(
+    #     model_name_or_path='Qwen/Qwen1.5-14B',
+    #     tokenizer_name='Qwen/Qwen1.5-14B',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='meta-llama/Llama-2-13b-hf',
+    #     tokenizer_name='meta-llama/Llama-2-13b-hf',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='EleutherAI/pythia-12b-v0',
+    #     tokenizer_name='EleutherAI/pythia-12b-v0',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
 ]
 
 if __name__ == '__main__':
@@ -279,6 +420,7 @@ if __name__ == '__main__':
                     failed_models.append(model_name)
             finally:
                 del evaluator
+                gc.collect()
                 torch.cuda.empty_cache()
 
     print("\nSummary:")
