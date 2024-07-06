@@ -371,6 +371,28 @@ config_list = [
     #     data=data_list,
     # ),
 
+    # ~9B
+    # EvaluationConfig(
+    #     model_name_or_path='01-ai/Yi-1.5-9B',
+    #     tokenizer_name='01-ai/Yi-1.5-9B',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='THUDM/glm-4-9b',
+    #     tokenizer_name='THUDM/glm-4-9b',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='google/gemma-2-9b',
+    #     tokenizer_name='google/gemma-2-9b',
+    #     model_type='hf',
+    #     data=data_list,
+    #     add_bos=True,
+    #     model_args={'attn_implementation': 'flash_attention_2', 'torch_dtype': torch.bfloat16}
+    # ),
+
     # ~14B
     # EvaluationConfig(
     #     model_name_or_path='Qwen/Qwen1.5-14B',

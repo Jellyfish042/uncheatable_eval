@@ -436,17 +436,19 @@ class Evaluator:
         try:
             with open(file_path, 'w') as file:
                 json.dump(data_dict, file, indent=4, default=self.default_serializer)
-            print(f"Dictionary saved successfully to {file_path}")
+            print(f"Log saved successfully to {file_path}")
         except Exception as e:
             print(f"Error saving dictionary: {e}")
 
     def evaluate(self, config: EvaluationConfig):
 
         # install requirements
+        print(f'Installing requirements: {config.requirements}')
         if len(config.requirements) > 0:
             self.install_requirements(config.requirements)
 
         # load model
+        print(f'Loading model {config.model_name_or_path}')
         if config.model_type == 'hf':
             model, tokenizer = self.load_hf_model(config)
         elif config.model_type == 'rwkv':
@@ -458,11 +460,12 @@ class Evaluator:
 
         for data_file in config.data:
 
+            print('-' * 80)
             print(f'Evaluating {config.model_name_or_path} on {data_file}')
 
             # load data
             texts = self.load_list_from_json(data_file)
-            print(f'data size: {len(texts)}')
+            # print(f'data size: {len(texts)}')
 
             # eval
             if config.model_type in ['hf', 'mamba']:
@@ -486,6 +489,7 @@ class Evaluator:
             results['model_args'] = config.model_args
             results['tokenizer_args'] = config.tokenizer_args
             results['requirements'] = config.requirements
+            results['batch_size'] = config.batch_size
 
             self.make_log(results, config.log_path)
 
