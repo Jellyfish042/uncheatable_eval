@@ -33,6 +33,7 @@ class EvaluationConfig:
     log_path: str = './logs/'  # path to save the evaluation results
     cache: str = './models/temp/'  # cache directory for the models
     chunk_size: int = 1024  # input tokens will be split into chunks of this size
+    batch_size: int = 1  # batch size for inference
 
     def __post_init__(self):
         default_model_args = {'device_map': 'auto', 'trust_remote_code': True}
@@ -261,164 +262,66 @@ class Evaluator:
 
         return data_dict
 
-    def eval_hf_model(self, model, tokenizer, texts, chunk_size, add_bos):
-        data = []
-        token_length_list = []
-        char_count = []
-
-        if add_bos:
-            bos_token = tokenizer.encode(tokenizer.bos_token)
-            len_bos = len(bos_token)
-
-        for idx, sample in tqdm(enumerate(texts), total=len(texts)):
-
-            char_count.append(len(sample))
-
-            with torch.no_grad():
-
-                inputs = tokenizer(sample, return_tensors='pt')
-                inputs = inputs.to(model.device)
-
-                seq_length = inputs['input_ids'].shape[-1]
-
-                neg_log_prob_temp = 0
-                if add_bos:
-                    for begin in range(0, seq_length, chunk_size - len_bos):
-                        input_chunk = inputs['input_ids'][:, begin: begin + chunk_size - len_bos]
-
-                        input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk],
-                                                dim=-1)
-
-                        logit = model.forward(input_ids=input_chunk).logits[0, :, :]
-                        # print(logit.shape, input_chunk.squeeze(0).shape)
-                        # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
-
-                        log_sum = self.calculate_log_sum(logit[len_bos:, :],
-                                                         input_chunk.squeeze(0)[len_bos:])  # exclude bos
-                        neg_log_prob_temp += log_sum
-                else:
-                    for begin in range(0, seq_length, chunk_size):
-                        input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
-
-                        logit = model.forward(input_ids=input_chunk).logits[0, :, :]
-
-                        log_sum = self.calculate_log_sum(logit, input_chunk.squeeze(0))
-                        neg_log_prob_temp += log_sum
-
-                # neg_log_prob_temp = 0
-                # for begin in range(0, seq_length, chunk_size):
-                #     input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
-                #
-                #     logit = model.forward(input_ids=input_chunk).logits[0, :, :]
-                #
-                #     log_sum = self.calculate_log_sum(logit, input_chunk.squeeze(0))
-                #     neg_log_prob_temp += log_sum
-
-                token_length_list.append(seq_length)
-                data.append(neg_log_prob_temp)
-
-        data_dict = {
-            'neg_log_prob_sum': sum(data) / len(data),
-            'avg tokens': sum(token_length_list) / len(token_length_list),
-            'avg character count': sum(char_count) / len(char_count),
-            'parameters count': self.count_model_parameters_in_billions(model),
-            'avg bytes': sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
-            'sample_count': len(texts)
-        }
-
-        # print(f'log probability sum: {sum(data) / len(data):.2f}')
-        # print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
-
-        return data_dict
-
-    # @torch.no_grad()
-    # def eval_hf_model(self, model, tokenizer, texts, chunk_size, add_bos, batch_size=4):
+    # def eval_hf_model(self, model, tokenizer, texts, chunk_size, add_bos):
     #     data = []
     #     token_length_list = []
     #     char_count = []
-    #     all_input_chunks = []
     #
     #     if add_bos:
     #         bos_token = tokenizer.encode(tokenizer.bos_token)
     #         len_bos = len(bos_token)
     #
-    #     if tokenizer.pad_token_id is not None:
-    #         pad_token_id = tokenizer.pad_token_id
-    #     elif tokenizer.eos_token_id is not None:
-    #         pad_token_id = tokenizer.eos_token_id
-    #     else:
-    #         raise ValueError("Tokenizer does not have a pad_token_id or eos_token_id")
-    #
-    #     for idx, sample in tqdm(enumerate(texts), total=len(texts), desc='Tokenizing'):
+    #     for idx, sample in tqdm(enumerate(texts), total=len(texts)):
     #
     #         char_count.append(len(sample))
     #
-    #         inputs = tokenizer(sample, return_tensors='pt')
-    #         inputs = inputs.to(model.device)
+    #         with torch.no_grad():
     #
-    #         seq_length = inputs['input_ids'].shape[-1]
+    #             inputs = tokenizer(sample, return_tensors='pt')
+    #             inputs = inputs.to(model.device)
     #
-    #         neg_log_prob_temp = 0
-    #         if add_bos:
-    #             for begin in range(0, seq_length, chunk_size - len_bos):
-    #                 input_chunk = inputs['input_ids'][:, begin: begin + chunk_size - len_bos]
+    #             seq_length = inputs['input_ids'].shape[-1]
     #
-    #                 token_length_list.append(input_chunk.shape[-1])
+    #             neg_log_prob_temp = 0
+    #             if add_bos:
+    #                 for begin in range(0, seq_length, chunk_size - len_bos):
+    #                     input_chunk = inputs['input_ids'][:, begin: begin + chunk_size - len_bos]
     #
-    #                 input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk],
-    #                                         dim=-1)
+    #                     input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk],
+    #                                             dim=-1)
     #
-    #                 pad_size = chunk_size - input_chunk.shape[-1]
-    #                 if pad_size > 0:
-    #                     padded_chunk = F.pad(input_chunk, (0, pad_size), "constant", pad_token_id)
-    #                     all_input_chunks.append(padded_chunk)
-    #                 else:
-    #                     all_input_chunks.append(input_chunk)
+    #                     logit = model.forward(input_ids=input_chunk).logits[0, :, :]
+    #                     # print(logit.shape, input_chunk.squeeze(0).shape)
+    #                     # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
     #
-    #                 # print(logit.shape, input_chunk.squeeze(0).shape)
-    #                 # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
+    #                     log_sum = self.calculate_log_sum(logit[len_bos:, :],
+    #                                                      input_chunk.squeeze(0)[len_bos:])  # exclude bos
+    #                     neg_log_prob_temp += log_sum
+    #             else:
+    #                 for begin in range(0, seq_length, chunk_size):
+    #                     input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
     #
-    #         else:
-    #             for begin in range(0, seq_length, chunk_size):
-    #                 input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
+    #                     logit = model.forward(input_ids=input_chunk).logits[0, :, :]
     #
-    #                 token_length_list.append(input_chunk.shape[-1])
+    #                     log_sum = self.calculate_log_sum(logit, input_chunk.squeeze(0))
+    #                     neg_log_prob_temp += log_sum
     #
-    #                 pad_size = chunk_size - input_chunk.shape[-1]
-    #                 if pad_size > 0:
-    #                     padded_chunk = F.pad(input_chunk, (pad_size, 0), "constant", pad_token_id)
-    #                     all_input_chunks.append(padded_chunk)
-    #                 else:
-    #                     all_input_chunks.append(input_chunk)
+    #             # neg_log_prob_temp = 0
+    #             # for begin in range(0, seq_length, chunk_size):
+    #             #     input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
+    #             #
+    #             #     logit = model.forward(input_ids=input_chunk).logits[0, :, :]
+    #             #
+    #             #     log_sum = self.calculate_log_sum(logit, input_chunk.squeeze(0))
+    #             #     neg_log_prob_temp += log_sum
     #
-    #     all_input_chunks_tensor = torch.cat(all_input_chunks, dim=0)
-    #
-    #     # Process the input chunks in batches
-    #     for i in tqdm(range(0, len(all_input_chunks_tensor), batch_size),
-    #                   total=math.ceil(len(all_input_chunks_tensor) / batch_size),
-    #                   desc='Inference'):
-    #         batch = all_input_chunks_tensor[i:i + batch_size]
-    #         attention_mask = batch != pad_token_id
-    #         outputs = model(input_ids=batch, attention_mask=attention_mask)
-    #         logits = outputs.logits
-    #
-    #         # Calculate the negative log probability for each chunk
-    #         for j in range(batch.shape[0]):
-    #             input_ids = batch[j]
-    #             logit = logits[j]
-    #
-    #             mask = input_ids != pad_token_id
-    #
-    #             masked_logits = logit[mask]
-    #             masked_input_ids = input_ids[mask]
-    #
-    #             neg_log_prob = self.calculate_log_sum(masked_logits, masked_input_ids)
-    #             data.append(neg_log_prob)
+    #             token_length_list.append(seq_length)
+    #             data.append(neg_log_prob_temp)
     #
     #     data_dict = {
-    #         'neg_log_prob_sum': sum(data) / len(texts),
-    #         'avg tokens': sum(token_length_list) / len(texts),
-    #         'avg character count': sum(char_count) / len(texts),
+    #         'neg_log_prob_sum': sum(data) / len(data),
+    #         'avg tokens': sum(token_length_list) / len(token_length_list),
+    #         'avg character count': sum(char_count) / len(char_count),
     #         'parameters count': self.count_model_parameters_in_billions(model),
     #         'avg bytes': sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
     #         'sample_count': len(texts)
@@ -428,6 +331,94 @@ class Evaluator:
     #     # print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
     #
     #     return data_dict
+
+    @torch.no_grad()
+    def eval_hf_model(self, model, tokenizer, texts, chunk_size, add_bos, batch_size):
+
+        if add_bos:
+            bos_token = tokenizer.encode(tokenizer.bos_token)
+            len_bos = len(bos_token)
+
+        if tokenizer.pad_token_id is not None:
+            pad_token_id = tokenizer.pad_token_id
+        elif tokenizer.eos_token_id is not None:
+            pad_token_id = tokenizer.eos_token_id
+        else:
+            raise ValueError("Tokenizer does not have a pad_token_id or eos_token_id for padding.")
+
+        data = []
+        token_length_list = []
+        all_input_chunks = []
+        for idx, sample in tqdm(enumerate(texts), total=len(texts), desc='Tokenizing'):
+
+            inputs = tokenizer(sample, return_tensors='pt')
+            inputs = inputs.to(model.device)
+
+            seq_length = inputs['input_ids'].shape[-1]
+
+            if add_bos:
+                for begin in range(0, seq_length, chunk_size - len_bos):
+                    input_chunk = inputs['input_ids'][:, begin: begin + chunk_size - len_bos]
+
+                    token_length_list.append(input_chunk.shape[-1])
+
+                    input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk],
+                                            dim=-1)
+                    all_input_chunks.append(input_chunk)
+
+                    # print(logit.shape, input_chunk.squeeze(0).shape)
+                    # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
+            else:
+                for begin in range(0, seq_length, chunk_size):
+                    input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
+
+                    token_length_list.append(input_chunk.shape[-1])
+                    all_input_chunks.append(input_chunk)
+
+        all_input_chunks.sort(key=lambda x: x.shape[1], reverse=True)
+
+        # Process the input chunks in batches
+        for i in tqdm(range(0, len(all_input_chunks), batch_size),
+                      total=math.ceil(len(all_input_chunks) / batch_size),
+                      desc='Inference'):
+
+            origin_batch = all_input_chunks[i:i + batch_size]
+            max_length = max([chunk.shape[1] for chunk in origin_batch])
+
+            padded_batch = torch.cat([F.pad(chunk, (max_length - chunk.shape[1], 0), "constant", pad_token_id) for chunk in origin_batch])
+            attention_mask = padded_batch != pad_token_id
+
+            outputs = model(input_ids=padded_batch, attention_mask=attention_mask)
+            logits = outputs.logits
+
+            # Calculate the negative log probability for each chunk
+            for j in range(padded_batch.shape[0]):
+                input_ids = padded_batch[j]
+                logit = logits[j]
+
+                mask = input_ids != pad_token_id
+                if add_bos:
+                    mask[:len_bos] = False
+
+                masked_logits = logit[mask]
+                masked_input_ids = input_ids[mask]
+
+                neg_log_prob = self.calculate_log_sum(masked_logits, masked_input_ids)
+                data.append(neg_log_prob)
+
+        data_dict = {
+            'neg_log_prob_sum': sum(data) / len(texts),
+            'avg tokens': sum(token_length_list) / len(texts),
+            'avg character count': sum([len(text) for text in texts]) / len(texts),
+            'parameters count': self.count_model_parameters_in_billions(model),
+            'avg bytes': sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
+            'sample_count': len(texts)
+        }
+
+        # print(f'log probability sum: {sum(data) / len(data):.2f}')
+        # print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
+
+        return data_dict
 
     def make_log(self, data_dict, folder_path):
         if not os.path.exists(folder_path):
@@ -479,7 +470,8 @@ class Evaluator:
                                              tokenizer=tokenizer,
                                              texts=texts,
                                              chunk_size=config.chunk_size,
-                                             add_bos=config.add_bos
+                                             add_bos=config.add_bos,
+                                             batch_size=config.batch_size,
                                              )
             elif config.model_type == 'rwkv':
                 results = self.eval_rwkv(model=model, tokenizer=tokenizer, texts=texts, chunk_size=config.chunk_size)
@@ -499,6 +491,7 @@ class Evaluator:
 
             print(f'Finished evaluating {config.model_name_or_path} on {data_file}')
             print(json.dumps(results, indent=4, ensure_ascii=False, default=self.default_serializer))
+            print('-' * 80)
 
         del model
         del tokenizer
