@@ -1,5 +1,6 @@
 import importlib.metadata
 import json
+import math
 import os
 from dataclasses import dataclass, field
 from typing import Dict, Any
@@ -21,8 +22,10 @@ class EvaluationConfig:
     model_type: str
     data: list[str]
 
-    model_args: Dict[Any, Any] = field(default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoModelForCausalLM
-    tokenizer_args: Dict[Any, Any] = field(default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoTokenizer
+    model_args: Dict[Any, Any] = field(
+        default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoModelForCausalLM
+    tokenizer_args: Dict[Any, Any] = field(
+        default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoTokenizer
 
     requirements: list[str] = field(default_factory=list)  # list of packages, will be installed automatically
 
@@ -30,6 +33,7 @@ class EvaluationConfig:
     log_path: str = './logs/'  # path to save the evaluation results
     cache: str = './models/temp/'  # cache directory for the models
     chunk_size: int = 1024  # input tokens will be split into chunks of this size
+    batch_size: int = 1  # batch size for inference
 
     def __post_init__(self):
         default_model_args = {'device_map': 'auto', 'trust_remote_code': True}
@@ -90,7 +94,7 @@ class Evaluator:
                 if required_version_spec:
                     # Extract the operator and the version from requirement
                     operator = required_version_spec[:2] if required_version_spec[1] in ['=', '>'] else \
-                    required_version_spec[0]
+                        required_version_spec[0]
                     required_version = version.parse(required_version_spec.lstrip(operator))
 
                     # Version comparison based on the operator
@@ -267,7 +271,7 @@ class Evaluator:
             bos_token = tokenizer.encode(tokenizer.bos_token)
             len_bos = len(bos_token)
 
-        for idx, sample in tqdm(enumerate(texts), total=len(texts)):
+        for idx, sample in tqdm(enumerate(texts), total=len(texts), desc='Evaluating'):
 
             char_count.append(len(sample))
 
@@ -290,7 +294,8 @@ class Evaluator:
                         # print(logit.shape, input_chunk.squeeze(0).shape)
                         # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
 
-                        log_sum = self.calculate_log_sum(logit[len_bos:, :], input_chunk.squeeze(0)[len_bos:])  # exclude bos
+                        log_sum = self.calculate_log_sum(logit[len_bos:, :],
+                                                         input_chunk.squeeze(0)[len_bos:])  # exclude bos
                         neg_log_prob_temp += log_sum
                 else:
                     for begin in range(0, seq_length, chunk_size):
@@ -327,6 +332,97 @@ class Evaluator:
 
         return data_dict
 
+    @torch.no_grad()
+    def eval_hf_model_batch(self, model, tokenizer, texts, chunk_size, add_bos, batch_size):
+
+        if add_bos:
+            bos_token = tokenizer.encode(tokenizer.bos_token)
+            len_bos = len(bos_token)
+
+        if tokenizer.pad_token_id is not None:
+            pad_token_id = tokenizer.pad_token_id
+        elif tokenizer.eos_token_id is not None:
+            pad_token_id = tokenizer.eos_token_id
+        else:
+            raise ValueError("Tokenizer does not have a pad_token_id or eos_token_id for padding.")
+
+        data = []
+        token_length_list = []
+        all_input_chunks = []
+        for idx, sample in tqdm(enumerate(texts), total=len(texts), desc='Tokenizing'):
+
+            inputs = tokenizer(sample, return_tensors='pt')
+            inputs = inputs.to(model.device)
+
+            seq_length = inputs['input_ids'].shape[-1]
+
+            if add_bos:
+                for begin in range(0, seq_length, chunk_size - len_bos):
+                    input_chunk = inputs['input_ids'][:, begin: begin + chunk_size - len_bos]
+
+                    token_length_list.append(input_chunk.shape[-1])
+
+                    input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk],
+                                            dim=-1)
+                    all_input_chunks.append(input_chunk)
+
+                    # print(logit.shape, input_chunk.squeeze(0).shape)
+                    # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
+            else:
+                for begin in range(0, seq_length, chunk_size):
+                    input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
+
+                    token_length_list.append(input_chunk.shape[-1])
+                    all_input_chunks.append(input_chunk)
+
+        all_input_chunks.sort(key=lambda x: x.shape[1], reverse=True)
+
+        # Process the input chunks in batches
+        for i in tqdm(range(0, len(all_input_chunks), batch_size),
+                      total=math.ceil(len(all_input_chunks) / batch_size),
+                      desc='Inference'):
+
+            origin_batch = all_input_chunks[i:i + batch_size]
+            max_length = max([chunk.shape[1] for chunk in origin_batch])
+
+            padded_batch = torch.cat(
+                [F.pad(chunk, (max_length - chunk.shape[1], 0), "constant", pad_token_id) for chunk in origin_batch])
+            attention_mask = padded_batch != pad_token_id
+
+            outputs = model(input_ids=padded_batch, attention_mask=attention_mask)
+            logits = outputs.logits
+
+            # Calculate the negative log probability for each chunk
+            for j in range(padded_batch.shape[0]):
+                input_ids = padded_batch[j]
+                logit = logits[j]
+
+                mask = (padded_batch != pad_token_id).int()
+                if add_bos:
+                    # Find the first occurrence of a non-pad token which would be the BOS token
+                    first_non_pad = (input_ids != pad_token_id).nonzero(as_tuple=True)[0][0]
+                    mask[first_non_pad:first_non_pad + len_bos] = 0  # Set BOS token positions to False
+
+                masked_logits = logit[mask.bool()]  # Convert mask back to boolean for indexing
+                masked_input_ids = input_ids[mask.bool()]  # Convert mask back to boolean for indexing
+
+                neg_log_prob = self.calculate_log_sum(masked_logits, masked_input_ids)
+                data.append(neg_log_prob)
+
+        data_dict = {
+            'neg_log_prob_sum': sum(data) / len(texts),
+            'avg tokens': sum(token_length_list) / len(texts),
+            'avg character count': sum([len(text) for text in texts]) / len(texts),
+            'parameters count': self.count_model_parameters_in_billions(model),
+            'avg bytes': sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
+            'sample_count': len(texts)
+        }
+
+        # print(f'log probability sum: {sum(data) / len(data):.2f}')
+        # print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
+
+        return data_dict
+
     def make_log(self, data_dict, folder_path):
         if not os.path.exists(folder_path):
             try:
@@ -343,17 +439,19 @@ class Evaluator:
         try:
             with open(file_path, 'w') as file:
                 json.dump(data_dict, file, indent=4, default=self.default_serializer)
-            print(f"Dictionary saved successfully to {file_path}")
+            print(f"Log saved successfully to {file_path}")
         except Exception as e:
             print(f"Error saving dictionary: {e}")
 
     def evaluate(self, config: EvaluationConfig):
 
         # install requirements
+        print(f'Installing requirements: {config.requirements}')
         if len(config.requirements) > 0:
             self.install_requirements(config.requirements)
 
         # load model
+        print(f'Loading model {config.model_name_or_path}')
         if config.model_type == 'hf':
             model, tokenizer = self.load_hf_model(config)
         elif config.model_type == 'rwkv':
@@ -365,20 +463,30 @@ class Evaluator:
 
         for data_file in config.data:
 
+            print('-' * 80)
             print(f'Evaluating {config.model_name_or_path} on {data_file}')
 
             # load data
             texts = self.load_list_from_json(data_file)
-            print(f'data size: {len(texts)}')
+            # print(f'data size: {len(texts)}')
 
             # eval
             if config.model_type in ['hf', 'mamba']:
-                results = self.eval_hf_model(model=model,
-                                             tokenizer=tokenizer,
-                                             texts=texts,
-                                             chunk_size=config.chunk_size,
-                                             add_bos=config.add_bos
-                                             )
+                if config.batch_size > 1:
+                    results = self.eval_hf_model_batch(model=model,
+                                                       tokenizer=tokenizer,
+                                                       texts=texts,
+                                                       chunk_size=config.chunk_size,
+                                                       add_bos=config.add_bos,
+                                                       batch_size=config.batch_size,
+                                                       )
+                else:
+                    results = self.eval_hf_model(model=model,
+                                                 tokenizer=tokenizer,
+                                                 texts=texts,
+                                                 chunk_size=config.chunk_size,
+                                                 add_bos=config.add_bos,
+                                                 )
             elif config.model_type == 'rwkv':
                 results = self.eval_rwkv(model=model, tokenizer=tokenizer, texts=texts, chunk_size=config.chunk_size)
             else:
@@ -392,11 +500,13 @@ class Evaluator:
             results['model_args'] = config.model_args
             results['tokenizer_args'] = config.tokenizer_args
             results['requirements'] = config.requirements
+            results['batch_size'] = config.batch_size
 
             self.make_log(results, config.log_path)
 
             print(f'Finished evaluating {config.model_name_or_path} on {data_file}')
             print(json.dumps(results, indent=4, ensure_ascii=False, default=self.default_serializer))
+            print('-' * 80)
 
         del model
         del tokenizer

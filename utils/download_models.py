@@ -2,11 +2,11 @@ import subprocess
 import os
 
 model_names = [
-    'BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
+    'stabilityai/stablelm-2-1_6b',
+    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-1B5-v2-20231025-ctx4096.pth',
-    # 'stabilityai/stablelm-2-1_6b',
     # 'h2oai/h2o-danube-1.8b-base',
-    # 'TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T',
+    # 'TinyLlama/TinyLlama_v1.1',
     # 'EleutherAI/pythia-1.4b-v0',
     # 'bigscience/bloom-1b7',
     # 'BlinkDL/rwkv-4-pile-1b5/RWKV-4-Pile-1B5-20220903-8040.pth',
@@ -21,6 +21,7 @@ model_names = [
     # 'state-spaces/mamba-1.4b-hf',  # pip install causal-conv1d>=1.2.0 mamba-ssm, # use state-spaces/mamba-1.4b-hf instead of state-spaces/mamba-1.4b
     # 'apple/OpenELM-1_1B',
     # 'Qwen/Qwen2-1.5B',
+    # 'IndexTeam/Index-1.9B',
 
     # 'BlinkDL/rwkv-6-world/RWKV-x060-World-3B-v2.1-20240417-ctx4096.pth',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-3B-v2-20231113-ctx4096.pth',
@@ -40,18 +41,28 @@ model_names = [
     # 'microsoft/Phi-3-mini-4k-instruct',
     # 'google/recurrentgemma-2b',
     # 'microsoft/phi-2',
-
+    #
     # 'meta-llama/Meta-Llama-3-8B',  # pip install accelerate
     # 'mistralai/Mistral-7B-v0.1',
+    # 'Qwen/Qwen2-7B',
+    # 'Qwen/Qwen1.5-7B',
+    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
     # 'BlinkDL/rwkv-5-world/RWKV-5-World-7B-v2-20240128-ctx4096.pth',
     # 'meta-llama/Llama-2-7b-hf',
     # 'TRI-ML/mamba-7b-rw',
-    # 'Qwen/Qwen1.5-7B',
     # 'tiiuae/falcon-7b',
     # 'mosaicml/mpt-7b',  # pip install einops
     # 'EleutherAI/pythia-6.9b-v0',
-    # 'BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
-    # 'allenai/OLMo-1.7-7B-hf'
+    # 'allenai/OLMo-1.7-7B-hf',
+    # 'google/gemma-7b',
+    # 'microsoft/Phi-3-small-8k-instruct',
+    # 'openlm-research/open_llama_7b_v2',
+    # 'Zyphra/Zamba-7B-v1',
+    # 'm-a-p/neo_7b',
+    # 'CohereForAI/aya-23-8B',
+    #
+    # '01-ai/Yi-1.5-9B',
+    # 'THUDM/glm-4-9b',
 ]
 
 cache_dir = '../models/temp/'
