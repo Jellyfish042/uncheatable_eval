@@ -20,12 +20,14 @@ config_list = [
         tokenizer_name='Qwen/Qwen2-1.5B',
         model_type='hf',
         data=data_list,
+        batch_size=4,
     ),
     # EvaluationConfig(
     #     model_name_or_path='stabilityai/stablelm-2-1_6b',
     #     tokenizer_name='stabilityai/stablelm-2-1_6b',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='BlinkDL/rwkv-6-world/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth',
@@ -46,24 +48,28 @@ config_list = [
     #     tokenizer_name='h2oai/h2o-danube-1.8b-base',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T',
     #     tokenizer_name='TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='EleutherAI/pythia-1.4b-v0',
     #     tokenizer_name='EleutherAI/pythia-1.4b-v0',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='bigscience/bloom-1b7',
     #     tokenizer_name='bigscience/bloom-1b7',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='BlinkDL/rwkv-4-pile-1b5/RWKV-4-Pile-1B5-20220903-8040.pth',
@@ -84,12 +90,14 @@ config_list = [
     #     tokenizer_name='allenai/OLMo-1B-hf',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='Qwen/Qwen1.5-1.8B',
     #     tokenizer_name='Qwen/Qwen1.5-1.8B',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='Qwen/Qwen-1_8B',
@@ -97,18 +105,21 @@ config_list = [
     #     model_type='hf',
     #     data=data_list,
     #     requirements=['transformers_stream_generator'],
+    #     batch_size=1,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
     #     tokenizer_name='princeton-nlp/Sheared-LLaMA-1.3B',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='tiiuae/falcon-rw-1b',
     #     tokenizer_name='tiiuae/falcon-rw-1b',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='OpenNLPLab/TransNormerLLM-1B',
@@ -116,18 +127,21 @@ config_list = [
     #     model_type='hf',
     #     data=data_list,
     #     requirements=['sentencepiece'],
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='microsoft/phi-1_5',
     #     tokenizer_name='microsoft/phi-1_5',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='state-spaces/mamba-1.4b-hf',
     #     tokenizer_name='state-spaces/mamba-1.4b-hf',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=1,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='apple/OpenELM-1_1B',
@@ -135,12 +149,14 @@ config_list = [
     #     model_type='hf',
     #     data=data_list,
     #     add_bos=True,
+    #     batch_size=4,
     # ),
     # EvaluationConfig(
     #     model_name_or_path='IndexTeam/Index-1.9B',
     #     tokenizer_name='IndexTeam/Index-1.9B',
     #     model_type='hf',
     #     data=data_list,
+    #     batch_size=4,
     # ),
 
     # ~3B

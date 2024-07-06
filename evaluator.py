@@ -262,78 +262,78 @@ class Evaluator:
 
         return data_dict
 
-    # def eval_hf_model(self, model, tokenizer, texts, chunk_size, add_bos):
-    #     data = []
-    #     token_length_list = []
-    #     char_count = []
-    #
-    #     if add_bos:
-    #         bos_token = tokenizer.encode(tokenizer.bos_token)
-    #         len_bos = len(bos_token)
-    #
-    #     for idx, sample in tqdm(enumerate(texts), total=len(texts)):
-    #
-    #         char_count.append(len(sample))
-    #
-    #         with torch.no_grad():
-    #
-    #             inputs = tokenizer(sample, return_tensors='pt')
-    #             inputs = inputs.to(model.device)
-    #
-    #             seq_length = inputs['input_ids'].shape[-1]
-    #
-    #             neg_log_prob_temp = 0
-    #             if add_bos:
-    #                 for begin in range(0, seq_length, chunk_size - len_bos):
-    #                     input_chunk = inputs['input_ids'][:, begin: begin + chunk_size - len_bos]
-    #
-    #                     input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk],
-    #                                             dim=-1)
-    #
-    #                     logit = model.forward(input_ids=input_chunk).logits[0, :, :]
-    #                     # print(logit.shape, input_chunk.squeeze(0).shape)
-    #                     # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
-    #
-    #                     log_sum = self.calculate_log_sum(logit[len_bos:, :],
-    #                                                      input_chunk.squeeze(0)[len_bos:])  # exclude bos
-    #                     neg_log_prob_temp += log_sum
-    #             else:
-    #                 for begin in range(0, seq_length, chunk_size):
-    #                     input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
-    #
-    #                     logit = model.forward(input_ids=input_chunk).logits[0, :, :]
-    #
-    #                     log_sum = self.calculate_log_sum(logit, input_chunk.squeeze(0))
-    #                     neg_log_prob_temp += log_sum
-    #
-    #             # neg_log_prob_temp = 0
-    #             # for begin in range(0, seq_length, chunk_size):
-    #             #     input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
-    #             #
-    #             #     logit = model.forward(input_ids=input_chunk).logits[0, :, :]
-    #             #
-    #             #     log_sum = self.calculate_log_sum(logit, input_chunk.squeeze(0))
-    #             #     neg_log_prob_temp += log_sum
-    #
-    #             token_length_list.append(seq_length)
-    #             data.append(neg_log_prob_temp)
-    #
-    #     data_dict = {
-    #         'neg_log_prob_sum': sum(data) / len(data),
-    #         'avg tokens': sum(token_length_list) / len(token_length_list),
-    #         'avg character count': sum(char_count) / len(char_count),
-    #         'parameters count': self.count_model_parameters_in_billions(model),
-    #         'avg bytes': sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
-    #         'sample_count': len(texts)
-    #     }
-    #
-    #     # print(f'log probability sum: {sum(data) / len(data):.2f}')
-    #     # print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
-    #
-    #     return data_dict
+    def eval_hf_model(self, model, tokenizer, texts, chunk_size, add_bos):
+        data = []
+        token_length_list = []
+        char_count = []
+
+        if add_bos:
+            bos_token = tokenizer.encode(tokenizer.bos_token)
+            len_bos = len(bos_token)
+
+        for idx, sample in tqdm(enumerate(texts), total=len(texts), desc='Evaluating'):
+
+            char_count.append(len(sample))
+
+            with torch.no_grad():
+
+                inputs = tokenizer(sample, return_tensors='pt')
+                inputs = inputs.to(model.device)
+
+                seq_length = inputs['input_ids'].shape[-1]
+
+                neg_log_prob_temp = 0
+                if add_bos:
+                    for begin in range(0, seq_length, chunk_size - len_bos):
+                        input_chunk = inputs['input_ids'][:, begin: begin + chunk_size - len_bos]
+
+                        input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk],
+                                                dim=-1)
+
+                        logit = model.forward(input_ids=input_chunk).logits[0, :, :]
+                        # print(logit.shape, input_chunk.squeeze(0).shape)
+                        # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
+
+                        log_sum = self.calculate_log_sum(logit[len_bos:, :],
+                                                         input_chunk.squeeze(0)[len_bos:])  # exclude bos
+                        neg_log_prob_temp += log_sum
+                else:
+                    for begin in range(0, seq_length, chunk_size):
+                        input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
+
+                        logit = model.forward(input_ids=input_chunk).logits[0, :, :]
+
+                        log_sum = self.calculate_log_sum(logit, input_chunk.squeeze(0))
+                        neg_log_prob_temp += log_sum
+
+                # neg_log_prob_temp = 0
+                # for begin in range(0, seq_length, chunk_size):
+                #     input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
+                #
+                #     logit = model.forward(input_ids=input_chunk).logits[0, :, :]
+                #
+                #     log_sum = self.calculate_log_sum(logit, input_chunk.squeeze(0))
+                #     neg_log_prob_temp += log_sum
+
+                token_length_list.append(seq_length)
+                data.append(neg_log_prob_temp)
+
+        data_dict = {
+            'neg_log_prob_sum': sum(data) / len(data),
+            'avg tokens': sum(token_length_list) / len(token_length_list),
+            'avg character count': sum(char_count) / len(char_count),
+            'parameters count': self.count_model_parameters_in_billions(model),
+            'avg bytes': sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
+            'sample_count': len(texts)
+        }
+
+        # print(f'log probability sum: {sum(data) / len(data):.2f}')
+        # print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
+
+        return data_dict
 
     @torch.no_grad()
-    def eval_hf_model(self, model, tokenizer, texts, chunk_size, add_bos, batch_size):
+    def eval_hf_model_batch(self, model, tokenizer, texts, chunk_size, add_bos, batch_size):
 
         if add_bos:
             bos_token = tokenizer.encode(tokenizer.bos_token)
@@ -385,7 +385,8 @@ class Evaluator:
             origin_batch = all_input_chunks[i:i + batch_size]
             max_length = max([chunk.shape[1] for chunk in origin_batch])
 
-            padded_batch = torch.cat([F.pad(chunk, (max_length - chunk.shape[1], 0), "constant", pad_token_id) for chunk in origin_batch])
+            padded_batch = torch.cat(
+                [F.pad(chunk, (max_length - chunk.shape[1], 0), "constant", pad_token_id) for chunk in origin_batch])
             attention_mask = padded_batch != pad_token_id
 
             outputs = model(input_ids=padded_batch, attention_mask=attention_mask)
@@ -396,7 +397,7 @@ class Evaluator:
                 input_ids = padded_batch[j]
                 logit = logits[j]
 
-                mask = input_ids != pad_token_id
+                mask = (padded_batch != pad_token_id).int()
                 if add_bos:
                     mask[:len_bos] = False
 
@@ -469,13 +470,21 @@ class Evaluator:
 
             # eval
             if config.model_type in ['hf', 'mamba']:
-                results = self.eval_hf_model(model=model,
-                                             tokenizer=tokenizer,
-                                             texts=texts,
-                                             chunk_size=config.chunk_size,
-                                             add_bos=config.add_bos,
-                                             batch_size=config.batch_size,
-                                             )
+                if config.batch_size > 1:
+                    results = self.eval_hf_model_batch(model=model,
+                                                       tokenizer=tokenizer,
+                                                       texts=texts,
+                                                       chunk_size=config.chunk_size,
+                                                       add_bos=config.add_bos,
+                                                       batch_size=config.batch_size,
+                                                       )
+                else:
+                    results = self.eval_hf_model(model=model,
+                                                 tokenizer=tokenizer,
+                                                 texts=texts,
+                                                 chunk_size=config.chunk_size,
+                                                 add_bos=config.add_bos,
+                                                 )
             elif config.model_type == 'rwkv':
                 results = self.eval_rwkv(model=model, tokenizer=tokenizer, texts=texts, chunk_size=config.chunk_size)
             else:
