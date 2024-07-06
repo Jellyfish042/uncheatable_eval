@@ -399,10 +399,12 @@ class Evaluator:
 
                 mask = (padded_batch != pad_token_id).int()
                 if add_bos:
-                    mask[:len_bos] = False
+                    # Find the first occurrence of a non-pad token which would be the BOS token
+                    first_non_pad = (input_ids != pad_token_id).nonzero(as_tuple=True)[0][0]
+                    mask[first_non_pad:first_non_pad + len_bos] = 0  # Set BOS token positions to False
 
-                masked_logits = logit[mask]
-                masked_input_ids = input_ids[mask]
+                masked_logits = logit[mask.bool()]  # Convert mask back to boolean for indexing
+                masked_input_ids = input_ids[mask.bool()]  # Convert mask back to boolean for indexing
 
                 neg_log_prob = self.calculate_log_sum(masked_logits, masked_input_ids)
                 data.append(neg_log_prob)
