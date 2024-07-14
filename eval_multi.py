@@ -96,7 +96,7 @@ config_list = [
     #     tokenizer_name='Qwen/Qwen-1_8B',
     #     model_type='hf',
     #     data=data_list,
-    #     requirements=['transformers_stream_generator'],
+    #     requirements=['transformers_stream_generator', 'tiktoken'],
     # ),
     # EvaluationConfig(
     #     model_name_or_path='princeton-nlp/Sheared-LLaMA-1.3B',
