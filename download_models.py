@@ -1,11 +1,13 @@
 from eval_multi import config_list
 from helpers import install_requirements
 import os
+from huggingface_hub import login
 
 CACHE_DIR = './models/temp/'
-os.environ['HF_AUTH_TOKEN'] = ''
+HF_TOKEN = ''
 
 os.environ['HF_HOME'] = CACHE_DIR
+login(token=HF_TOKEN)
 
 if __name__ == '__main__':
     for config in config_list:
