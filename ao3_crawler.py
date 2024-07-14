@@ -1,20 +1,24 @@
 import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import argparse
 from helpers import save_json
 from proxy import ProxyManager
-from datetime import datetime, timedelta
+from datetime import datetime
 from lxml import html
 import time
 import re
 from requests.exceptions import RequestException
+from queue import Queue
+import threading
 
 
 class AO3Crawler:
     def __init__(self):
-        pass
+        self.queue = Queue()
+        self.all_works = set()
+        self.lock = threading.Lock()
+        self.stop_signal = False
 
     @staticmethod
     def extract_filtered_work_ids(html):
@@ -33,24 +37,14 @@ class AO3Crawler:
 
     @staticmethod
     def calculate_dates(start_date_str, end_date_str):
-        # Convert input strings to date objects
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-
-        # Get today's date
         today = datetime.today().date()
-
-        # Check if either date is later than or equal to today
         if start_date >= today or end_date >= today:
             return "Error: Dates must be earlier than today."
-
-        # Calculate the difference in days from today to the start and end dates
         days_from_today_to_end = (today - end_date).days
         days_from_today_to_start = (today - start_date).days
-
-        # Format the result string
         result = f"{days_from_today_to_end}-{days_from_today_to_start}+days"
-
         return result
 
     @staticmethod
@@ -63,8 +57,7 @@ class AO3Crawler:
 
         for attempt in range(retries):
             try:
-                response = requests.get(url, proxies=proxies)
-
+                response = requests.get(url, proxies=proxies, timeout=(5, 10))
                 if response.status_code == 200:
                     tree = html.fromstring(response.content)
                     for xpath in xpaths:
@@ -74,128 +67,83 @@ class AO3Crawler:
                             result = ''.join(result)
                             result = re.sub(r'\n+', '\n', result)
                             return result.strip()
-
-                    # print(f"No paragraphs found with any of the given XPaths. Attempt {attempt + 1} of {retries}.")
-                else:
-                    pass
-                    # print(f"Failed to retrieve the webpage. Status code: {response.status_code}. Attempt {attempt + 1} of {retries}.")
-
-            except requests.RequestException as e:
+            except requests.RequestException:
                 pass
-                # print(f"Request failed: {e}. Attempt {attempt + 1} of {retries}.")
-
             time.sleep(delay)
-
-        # print("All attempts failed.")
         return []
 
     @staticmethod
-    def fetch_url_with_retries(url, max_retries=5, delay=2, verify=True, proxies=None):
+    def fetch_url_with_retries(url, max_retries=3, delay=2, verify=True, proxies=None):
         retries = 0
         while retries < max_retries:
+            # print('fetch_url_with_retries', url, retries)
             try:
-                response = requests.get(url, verify=verify, proxies=proxies)
+                response = requests.get(url, verify=verify, proxies=proxies, timeout=(5, 10))
                 return response
-            except RequestException as e:
+            except RequestException:
                 retries += 1
-                # print(f"Attempt {retries} failed with error: {e}. Retrying in {delay} seconds...")
                 time.sleep(delay)
         raise Exception(f"Failed to fetch URL after {max_retries} attempts")
 
-    def pipeline(self,
-                 start_date,
-                 end_date,
-                 language_id='1',
-                 num_works=1000,
-                 max_workers=1,
-                 max_page=100,
-                 min_char=2000,
-                 max_char=5000,
-                 sleep_time=3,
-                 manager=None):
+    def producer(self, url_template, set_time, language_id, max_page, manager):
+        for page in range(1, max_page + 1):
+            if self.stop_signal:
+                # print('producer stop')
+                break
+            url = url_template.replace('<PAGE>', str(page)).replace('<LANGUAGE_ID>', str(language_id)).replace('<TIME>',
+                                                                                                               set_time)
+            proxy = manager.get_random_proxy()
+            response = self.fetch_url_with_retries(url, proxies=proxy)
+            if response.status_code == 200:
+                content = response.text
+                work_ids = self.extract_filtered_work_ids(content)
+                # print(work_ids)
+                for work_id in work_ids:
+                    self.queue.put(work_id)
 
+    def consumer(self, min_char, max_char, manager, pbar, num_works):
+        while not self.stop_signal:
+            work_id = self.queue.get()
+            proxy = manager.get_random_proxy()
+            final_text = self.get_work(work_id, proxies=proxy)[:max_char]
+            if len(final_text) > min_char:
+                with self.lock:
+                    self.all_works.add(final_text)
+                    pbar.update(1)
+                    if len(self.all_works) >= num_works:
+                        # print('set stop signal')
+                        self.stop_signal = True
+            self.queue.task_done()
+            if self.stop_signal:
+                # print('consumer stop')
+                break
+
+    def cleanup_queue(self):
+        while not self.queue.empty():
+            self.queue.get()
+            self.queue.task_done()
+
+    def pipeline(self, start_date, end_date, language_id='1', num_works=1000, max_workers=5, max_page=100,
+                 min_char=2000, max_char=5000, manager=None):
         set_time = self.calculate_dates(start_date, end_date)
-
         url_template = 'https://archiveofourown.org/works/search?commit=Search&page=<PAGE>&work_search[language_id]=<LANGUAGE_ID>&work_search%5Brevised_at=<TIME>&work_search[single_chapter]=0&work_search[sort_column]=created_at&work_search[sort_direction]=desc'
-
         pbar = tqdm(total=num_works)
-        all_works = set()
 
-        def fetch_and_process_work(work_id, proxies=None):
-            try:
-                final_text = self.get_work(work_id, proxies=proxies)[:max_char]
-                if len(final_text) > min_char:
-                    return final_text
-                return None
-            except:
-                print(f"Failed to fetch work {work_id}")
-                return None
+        producer_thread = threading.Thread(target=self.producer,
+                                           args=(url_template, set_time, language_id, max_page, manager))
+        producer_thread.start()
 
-        if max_workers > 1:
-            for page in range(1, max_page + 1):
-                url = url_template.replace('<PAGE>', str(page)).replace('<LANGUAGE_ID>', str(language_id)).replace(
-                    '<TIME>', set_time)
-                proxy = manager.get_random_proxy()
-                response = self.fetch_url_with_retries(url, proxies=proxy)
-                if response.status_code == 200:
-                    content = response.text
-                    work_ids = self.extract_filtered_work_ids(content)
+        consumer_threads = []
+        for _ in range(max_workers):
+            t = threading.Thread(target=self.consumer, args=(min_char, max_char, manager, pbar, num_works))
+            t.start()
+            consumer_threads.append(t)
 
-                    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                        proxy = manager.get_random_proxy()
-                        futures = [executor.submit(fetch_and_process_work, work_id, proxy) for work_id in work_ids]
-                        for future in as_completed(futures):
-                            result = future.result()
-                            if result:
-                                all_works.add(result)
-                                pbar.n = len(all_works)
-                                pbar.refresh()
-                                if len(all_works) >= num_works:
-                                    return list(all_works)[:num_works]
-                else:
-                    pass
-                    # print(f"Failed to retrieve content, status code: {response.status_code}")
+        producer_thread.join()
+        for t in consumer_threads:
+            t.join()
 
-            return list(all_works)[:num_works]
-
-        else:
-            for page in range(max_page):
-                url = url_template.replace('<PAGE>', str(page)).replace('<LANGUAGE_ID>', str(language_id)).replace(
-                    '<TIME>', set_time)
-
-                proxy = manager.get_random_proxy()
-                response = self.fetch_url_with_retries(url, proxies=proxy)
-
-                if response.status_code == 200:
-                    content = response.text
-
-                    work_ids = self.extract_filtered_work_ids(content)
-                    # print(work_ids)
-
-                    for work_id in work_ids:
-                        try:
-                            final_text = self.get_work(work_id)[:max_char]
-                        except:
-                            continue
-
-                        time.sleep(sleep_time)
-
-                        if len(final_text) > min_char:
-                            all_works.add(final_text)
-                            pbar.n = len(all_works)
-                            pbar.refresh()
-
-                            if len(all_works) >= num_works:
-                                break
-
-                else:
-                    # print(f"Failed to retrieve content, status code: {response.status_code}")
-                    pass
-
-                if len(all_works) >= num_works:
-                    break
-
-            return list(all_works)[:num_works]
+        return list(self.all_works)[:num_works]
 
 
 LANGUAGE_MAP = {
