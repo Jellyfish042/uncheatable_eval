@@ -43,6 +43,7 @@ class EvaluationConfig:
         self.tokenizer_args = {**default_tokenizer_args, **self.tokenizer_args}
 
         if not os.path.exists(self.model_name_or_path):
+            self.original_model_name_or_path = self.model_name_or_path
             if '.pth' in self.model_name_or_path and 'rwkv' in self.model_name_or_path.lower() and self.cache:
                 self.model_name_or_path = os.path.join(self.cache, self.model_name_or_path.split('/')[-1])
 
