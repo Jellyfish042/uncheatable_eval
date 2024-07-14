@@ -31,8 +31,7 @@ if __name__ == '__main__':
                 hf_hub_download(repo_id=repo_name,
                                 filename=filename,
                                 local_dir=config.cache,
-                                cache_dir=config.cache,
-                                trust_remote_code=True)
+                                cache_dir=config.cache)
             elif config.model_type == 'mamba':
                 from transformers import AutoTokenizer
                 from mamba_ssm.models.mixer_seq_simple import MambaLMHeadModel
