@@ -3,6 +3,8 @@ from helpers import install_requirements
 import os
 
 CACHE_DIR = './models/temp/'
+os.environ['HF_AUTH_TOKEN'] = ''
+
 os.environ['HF_HOME'] = CACHE_DIR
 
 if __name__ == '__main__':
