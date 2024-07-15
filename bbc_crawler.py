@@ -166,7 +166,7 @@ class BBCCrawler:
                     break
                 content = self.fetch_url(url, min_length, max_length)
                 if content and not self.stop_event.is_set():
-                    all_news.append(content)
+                    all_news.add(content)
                     pbar.update(1)
                     # print('-' * 100)
                     # print(f'total: {len(all_news)}')
@@ -186,7 +186,7 @@ class BBCCrawler:
         ]
         max_page_num = 100
         no_content_page_allowed = 5
-        all_news = []
+        all_news = set()
         dates = self.generate_dates_m_d_y_compatible(start_date, end_date)
         url_queue = Queue()
         producer_thread = threading.Thread(target=self.producer, args=(dates, search_url, max_page_num, no_content_page_allowed, url_queue, proxy_manager))
@@ -205,7 +205,7 @@ class BBCCrawler:
                 future.result()
 
         pbar.close()
-        return all_news[:max_samples]
+        return list(all_news)[:max_samples]
 
 
 if __name__ == '__main__':
