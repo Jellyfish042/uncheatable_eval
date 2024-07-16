@@ -261,31 +261,35 @@ config_list = [
     #     data=data_list,
     # ),
 
-    # ~7B
+    # # ~7B
     # EvaluationConfig(
     #     model_name_or_path='meta-llama/Meta-Llama-3-8B',
     #     tokenizer_name='meta-llama/Meta-Llama-3-8B',
     #     model_type='hf',
     #     data=data_list,
-    #     requirements=['accelerate']
+    #     requirements=['accelerate'],
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
     # ),
     # EvaluationConfig(
     #     model_name_or_path='mistralai/Mistral-7B-v0.1',
     #     tokenizer_name='mistralai/Mistral-7B-v0.1',
     #     model_type='hf',
     #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
     # ),
     # EvaluationConfig(
     #     model_name_or_path='Qwen/Qwen2-7B',
     #     tokenizer_name='Qwen/Qwen2-7B',
     #     model_type='hf',
     #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
     # ),
     # EvaluationConfig(
     #     model_name_or_path='Qwen/Qwen1.5-7B',
     #     tokenizer_name='Qwen/Qwen1.5-7B',
     #     model_type='hf',
     #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
     # ),
     # EvaluationConfig(
     #     model_name_or_path='BlinkDL/rwkv-6-world/RWKV-x060-World-7B-v2.1-20240507-ctx4096.pth',
@@ -306,11 +310,77 @@ config_list = [
     #     tokenizer_name='meta-llama/Llama-2-7b-hf',
     #     model_type='hf',
     #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='01-ai/Yi-1.5-6B',
+    #     tokenizer_name='01-ai/Yi-1.5-6B',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='EleutherAI/pythia-6.9b-v0',
+    #     tokenizer_name='EleutherAI/pythia-6.9b-v0',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='allenai/OLMo-1.7-7B-hf',
+    #     tokenizer_name='allenai/OLMo-1.7-7B-hf',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='microsoft/Phi-3-small-8k-instruct',
+    #     tokenizer_name='microsoft/Phi-3-small-8k-instruct',
+    #     model_type='hf',
+    #     data=data_list,
+    #     requirements=['pytest'],
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='openlm-research/open_llama_7b_v2',
+    #     tokenizer_name='openlm-research/open_llama_7b_v2',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='m-a-p/neo_7b',
+    #     tokenizer_name='m-a-p/neo_7b',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='CohereForAI/aya-23-8B',
+    #     tokenizer_name='CohereForAI/aya-23-8B',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='internlm/internlm2_5-7b',
+    #     tokenizer_name='internlm/internlm2_5-7b',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='qihoo360/360Zhinao-7B-Base',
+    #     tokenizer_name='qihoo360/360Zhinao-7B-Base',
+    #     model_type='hf',
+    #     data=data_list,
+    #     requirements=['icecream', 'transformers==4.37.2'],
     # ),
     # EvaluationConfig(
     #     model_name_or_path='TRI-ML/mamba-7b-rw',
     #     tokenizer_name='TRI-ML/mamba-7b-rw',
     #     model_type='hf',
+    #     requirements=['transformers==4.42.4'],
     #     data=data_list,
     # ),
     # EvaluationConfig(
@@ -324,65 +394,31 @@ config_list = [
     #     tokenizer_name='mosaicml/mpt-7b',
     #     model_type='hf',
     #     data=data_list,
-    #     requirements=['einops']
+    #     requirements=['einops'],
     # ),
-    # EvaluationConfig(
-    #     model_name_or_path='EleutherAI/pythia-6.9b-v0',
-    #     tokenizer_name='EleutherAI/pythia-6.9b-v0',
-    #     model_type='hf',
-    #     data=data_list,
-    # ),
-    # EvaluationConfig(
-    #     model_name_or_path='allenai/OLMo-1.7-7B-hf',
-    #     tokenizer_name='allenai/OLMo-1.7-7B-hf',
-    #     model_type='hf',
-    #     data=data_list,
-    # ),
+
+    # ~9B
     # EvaluationConfig(
     #     model_name_or_path='google/gemma-7b',
     #     tokenizer_name='google/gemma-7b',
     #     model_type='hf',
     #     data=data_list,
     #     add_bos=True,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16, 'device_map': 'cuda:0'}
     # ),
-    # EvaluationConfig(
-    #     model_name_or_path='microsoft/Phi-3-small-8k-instruct',
-    #     tokenizer_name='microsoft/Phi-3-small-8k-instruct',
-    #     model_type='hf',
-    #     data=data_list,
-    #     model_args={'torch_dtype': "auto", 'device_map': 'cuda:0'}
-    # ),
-    # EvaluationConfig(
-    #     model_name_or_path='openlm-research/open_llama_7b_v2',
-    #     tokenizer_name='openlm-research/open_llama_7b_v2',
-    #     model_type='hf',
-    #     data=data_list,
-    # ),
-    # EvaluationConfig(
-    #     model_name_or_path='m-a-p/neo_7b',
-    #     tokenizer_name='m-a-p/neo_7b',
-    #     model_type='hf',
-    #     data=data_list,
-    # ),
-    # EvaluationConfig(
-    #     model_name_or_path='CohereForAI/aya-23-8B',
-    #     tokenizer_name='CohereForAI/aya-23-8B',
-    #     model_type='hf',
-    #     data=data_list,
-    # ),
-
-    # ~9B
     # EvaluationConfig(
     #     model_name_or_path='01-ai/Yi-1.5-9B',
     #     tokenizer_name='01-ai/Yi-1.5-9B',
     #     model_type='hf',
     #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16, 'device_map': 'cuda:0'}
     # ),
     # EvaluationConfig(
     #     model_name_or_path='THUDM/glm-4-9b',
     #     tokenizer_name='THUDM/glm-4-9b',
     #     model_type='hf',
     #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16, 'device_map': 'cuda:0'}
     # ),
     # EvaluationConfig(
     #     model_name_or_path='google/gemma-2-9b',
@@ -390,7 +426,7 @@ config_list = [
     #     model_type='hf',
     #     data=data_list,
     #     add_bos=True,
-    #     model_args={'attn_implementation': 'flash_attention_2', 'torch_dtype': torch.bfloat16}
+    #     requirements=['transformers==4.42.4'],
     # ),
 
     # ~14B
@@ -399,18 +435,29 @@ config_list = [
     #     tokenizer_name='Qwen/Qwen1.5-14B',
     #     model_type='hf',
     #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
     # ),
     # EvaluationConfig(
     #     model_name_or_path='meta-llama/Llama-2-13b-hf',
     #     tokenizer_name='meta-llama/Llama-2-13b-hf',
     #     model_type='hf',
     #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
     # ),
     # EvaluationConfig(
     #     model_name_or_path='EleutherAI/pythia-12b-v0',
     #     tokenizer_name='EleutherAI/pythia-12b-v0',
     #     model_type='hf',
     #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='BlinkDL/temp-latest-training-models/rwkv-x060-14b-world-v2.1-93%trained-20240602-ctx4k.pth',
+    #     tokenizer_name='rwkv_vocab_v20230424',
+    #     model_type='rwkv',
+    #     data=data_list,
+    #     requirements=['rwkv'],
+    #     model_args={'strategy': "cuda:0 fp16 *32 -> cuda:1 fp16"}
     # ),
 ]
 
