@@ -23,7 +23,9 @@ if __name__ == '__main__':
                                                              trust_remote_code=True)
                 hf_model = AutoModelForCausalLM.from_pretrained(config.model_name_or_path,
                                                                 cache_dir=config.cache,
-                                                                trust_remote_code=True)
+                                                                trust_remote_code=True,
+                                                                device_map='cpu')
+                del hf_tokenizer, hf_model
             elif config.model_type == 'rwkv':
                 from huggingface_hub import hf_hub_download
 
@@ -40,6 +42,7 @@ if __name__ == '__main__':
 
                 tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name)
                 model = MambaLMHeadModel.from_pretrained(config.original_model_name_or_path)
+                del tokenizer, model
             else:
                 raise NotImplementedError
             print('Download successful')
