@@ -118,7 +118,8 @@ class WikipediaCrawler:
                 word_list = ['\n参考', '\n注释', '\n注脚', '\n脚注', '\n参考资料', '\n参考文献', '\n参考来源', '\n资料来源', '\n参见', '\n外部链接', '\nReferences', '\n来源', '\n^ ',  # Chinese
                              '\nReferencias', '\n↑ ',  # Spanish
                              '\nWeblinks', '\nEinzelnachweise', '\nLiteratur'  # German
-                             '\nRéférences', '\nLiens externes', '\nArticles connexes', '\nArticles connexes', '\nNotes et références', 'Références',
+                             '\nRéférences', '\nLiens externes', '\nArticles connexes', '\nArticles connexes', '\nNotes et références', 'Références',  # French
+                             '\nReferences', '\n^ '  # English
                              ]
 
                 for word in word_list:
