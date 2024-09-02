@@ -31,6 +31,14 @@ class WikipediaCrawler:
             url = "https://en.wikipedia.org/w/api.php"
         elif language == 'chinese':
             url = "https://zh.wikipedia.org/w/api.php"
+        elif language == 'japanese':
+            url = "https://ja.wikipedia.org/w/api.php"
+        elif language == 'spanish':
+            url = "https://es.wikipedia.org/w/api.php"
+        elif language == 'german':
+            url = "https://de.wikipedia.org/w/api.php"
+        elif language == 'french':
+            url = "https://fr.wikipedia.org/w/api.php"
         else:
             raise ValueError(f"Language '{language}' is not supported.")
         request['action'] = 'query'
@@ -63,6 +71,14 @@ class WikipediaCrawler:
         elif language == 'chinese':
             url = "https://zh.wikipedia.org/w/api.php"
             params['variant'] = 'zh-cn'
+        elif language == 'japanese':
+            url = "https://ja.wikipedia.org/w/api.php"
+        elif language == 'spanish':
+            url = "https://es.wikipedia.org/w/api.php"
+        elif language == 'german':
+            url = "https://de.wikipedia.org/w/api.php"
+        elif language == 'french':
+            url = "https://fr.wikipedia.org/w/api.php"
         else:
             raise ValueError(f"Language '{language}' is not supported.")
 
@@ -96,8 +112,14 @@ class WikipediaCrawler:
                 # print("Processed HTML Structure:")
                 # print(soup.prettify())
                 text = soup.get_text()
+                # print('-' * 100)
+                # print(text)
 
-                word_list = ['\n参考', '\n注释', '\n注脚', '\n脚注', '\n参考资料', '\n参考文献', '\n参考来源', '\n资料来源', '\n参见', '\n外部链接']
+                word_list = ['\n参考', '\n注释', '\n注脚', '\n脚注', '\n参考资料', '\n参考文献', '\n参考来源', '\n资料来源', '\n参见', '\n外部链接', '\nReferences', '\n来源', '\n^ ',  # Chinese
+                             '\nReferencias', '\n↑ ',  # Spanish
+                             '\nWeblinks', '\nEinzelnachweise', '\nLiteratur'  # German
+                             '\nRéférences', '\nLiens externes', '\nArticles connexes', '\nArticles connexes', '\nNotes et références', 'Références',
+                             ]
 
                 for word in word_list:
                     index = text.find(word)
@@ -138,7 +160,7 @@ class WikipediaCrawler:
                  language='english',
                  batch_size=500,
                  max_samples=1000,
-                 min_length=2000,
+                 min_length=1000,
                  max_length=5000,
                  num_threads=16):
 
@@ -158,24 +180,6 @@ class WikipediaCrawler:
         all_data = set()
 
         pbar = tqdm(total=max_samples)
-
-        # for result in self.query(request, session):
-        #     recent_changes = result.get('recentchanges', [])
-        #     titles = [change['title'] for change in recent_changes]
-        #
-        #     for title in titles:
-        #         content = self.get_page_content(title, session)
-        #         if content is not None:
-        #             content = self.replace_multiple_newlines(content)
-        #             content = self.remove_text_in_brackets(content)
-        #             if len(content) > min_length:
-        #                 all_data.append(content[:max_length])
-        #                 pbar.update(1)
-        #         if len(all_data) >= max_samples:
-        #             break
-        #
-        #     if len(all_data) >= max_samples:
-        #         break
 
         def process_batch(titles):
             with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
@@ -216,12 +220,12 @@ if __name__ == '__main__':
                         help='The start date (YYYY-MM-DD).')
     parser.add_argument('--end_date', type=str, required=True,
                         help='The end date (YYYY-MM-DD).')
-    parser.add_argument('--language', type=str, default='english', choices=['english'],
-                        help='Programming language to filter the repositories.')  # Chinese is not supported yet
+    parser.add_argument('--language', type=str, default='english', choices=['english', 'chinese', 'japanese', 'spanish', 'german', 'french'],
+                        help='Programming language to filter the repositories.')
 
     parser.add_argument('--max_samples', type=int, default=1000,
                         help='Maximum number of works to crawl. Default is 1000.')
-    parser.add_argument('--min_length', type=int, default=2000,
+    parser.add_argument('--min_length', type=int, default=1000,
                         help='Minimum length of the files to be considered.')
     parser.add_argument('--max_length', type=int, default=5000,
                         help='Maximum length. Default is 5000 characters.')
