@@ -514,6 +514,7 @@ class Evaluator:
             results['tokenizer_args'] = config.tokenizer_args
             results['requirements'] = config.requirements
             results['batch_size'] = config.batch_size
+            results['compression_rate'] = results['neg_log_prob_sum'] / results['avg bytes'] * (1 / math.log(2)) * 0.125 * 100
 
             self.make_log(results, config.log_path)
 
