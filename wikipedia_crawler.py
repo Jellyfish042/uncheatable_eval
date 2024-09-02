@@ -39,6 +39,8 @@ class WikipediaCrawler:
             url = "https://de.wikipedia.org/w/api.php"
         elif language == 'french':
             url = "https://fr.wikipedia.org/w/api.php"
+        elif language == 'arabic':
+            url = "https://ar.wikipedia.org/w/api.php"
         else:
             raise ValueError(f"Language '{language}' is not supported.")
         request['action'] = 'query'
@@ -79,6 +81,8 @@ class WikipediaCrawler:
             url = "https://de.wikipedia.org/w/api.php"
         elif language == 'french':
             url = "https://fr.wikipedia.org/w/api.php"
+        elif language == 'arabic':
+            url = "https://ar.wikipedia.org/w/api.php"
         else:
             raise ValueError(f"Language '{language}' is not supported.")
 
@@ -119,7 +123,8 @@ class WikipediaCrawler:
                              '\nReferencias', '\n↑ ',  # Spanish
                              '\nWeblinks', '\nEinzelnachweise', '\nLiteratur'  # German
                              '\nRéférences', '\nLiens externes', '\nArticles connexes', '\nArticles connexes', '\nNotes et références', 'Références',  # French
-                             '\nReferences', '\n^ '  # English
+                             '\nReferences', '\n^ ',  # English
+                             'المراجع', 'المصادر', 'المصادn', 'المراجع', 'انظر أيضًا', 'مراجع', 'مصادر'  # Arabic
                              ]
 
                 for word in word_list:
@@ -221,7 +226,7 @@ if __name__ == '__main__':
                         help='The start date (YYYY-MM-DD).')
     parser.add_argument('--end_date', type=str, required=True,
                         help='The end date (YYYY-MM-DD).')
-    parser.add_argument('--language', type=str, default='english', choices=['english', 'chinese', 'japanese', 'spanish', 'german', 'french'],
+    parser.add_argument('--language', type=str, default='english', choices=['english', 'chinese', 'japanese', 'spanish', 'german', 'french', 'arabic'],
                         help='Programming language to filter the repositories.')
 
     parser.add_argument('--max_samples', type=int, default=1000,
