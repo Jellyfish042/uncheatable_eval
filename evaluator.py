@@ -140,6 +140,13 @@ class Evaluator:
             total_params += param.numel()
         print(f"Model parameters: {total_params / 1e9:.3f} billion")
 
+    @staticmethod
+    def print_rwkv_parameters_in_billions(rwkv_model):
+        total_params = 0
+        for param in rwkv_model.z.values():
+            total_params += param.numel()
+        print(f"Model parameters: {total_params / 1e9:.3f} billion")
+
     def load_hf_model(self, config: EvaluationConfig):
         from transformers import AutoTokenizer, AutoModelForCausalLM
 
