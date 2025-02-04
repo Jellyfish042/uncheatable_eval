@@ -20,12 +20,12 @@ class EvaluationConfig:
     model_name_or_path: str
     tokenizer_name: str
     model_type: str
-    data: list[str]
+    data: list
 
     model_args: Dict[Any, Any] = field(default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoModelForCausalLM
     tokenizer_args: Dict[Any, Any] = field(default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoTokenizer
 
-    requirements: list[str] = field(default_factory=list)  # list of packages, will be installed automatically
+    requirements: list = field(default_factory=list)  # list of packages, will be installed automatically
 
     add_bos: bool = False  # whether to add bos token to the input sequence
     log_path: str = "./logs/"  # path to save the evaluation results
@@ -73,7 +73,7 @@ class Evaluator:
             return str(obj)
 
     @staticmethod
-    def install_requirements(requirements: list[str]):
+    def install_requirements(requirements: list):
         """
         Installs or upgrades packages and reloads them if already imported.
 
