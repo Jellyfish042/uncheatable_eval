@@ -4,7 +4,7 @@ import os
 from huggingface_hub import login
 
 CACHE_DIR = "./models/temp/"
-HF_TOKEN = "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"
+HF_TOKEN = ""
 
 os.environ["HF_HOME"] = CACHE_DIR
 login(token=HF_TOKEN)
