@@ -172,6 +172,25 @@ class Evaluator:
         self.print_rwkv_parameters_in_billions(rwkv_model)
 
         return rwkv_model, rwkv_tokenizer
+    
+    def load_rwkv7(self, config: EvaluationConfig):
+        os.environ['RWKV_JIT_ON'] = '1'
+        os.environ["RWKV_CUDA_ON"] = '1'
+        os.environ["RWKV_V7_ON"] = "1"
+
+        from rwkv.model import RWKV
+        from rwkv.utils import PIPELINE
+
+        if config.model_args.get('strategy') is not None:
+            rwkv_model = RWKV(model=config.model_name_or_path.replace('.pth'), strategy=config.model_args.get('strategy'))
+        else:
+            rwkv_model = RWKV(model=config.model_name_or_path.replace('.pth'), strategy='cuda fp16')
+        rwkv_pipeline = PIPELINE(rwkv_model, config.tokenizer_name)
+        rwkv_tokenizer = rwkv_pipeline.tokenizer
+
+        self.print_rwkv_parameters_in_billions(rwkv_model)
+
+        return rwkv_model, rwkv_tokenizer
 
     def load_mamba(self, config: EvaluationConfig):
         # state-spaces/mamba-2.8b-slimpj
@@ -469,6 +488,8 @@ class Evaluator:
             model, tokenizer = self.load_hf_model(config)
         elif config.model_type == 'rwkv':
             model, tokenizer = self.load_rwkv(config)
+        elif config.model_type == 'rwkv7':
+            model, tokenizer = self.load_rwkv7(config)
         elif config.model_type == 'mamba':
             model, tokenizer = self.load_mamba(config)
         else:
