@@ -220,8 +220,12 @@ class Evaluator:
     @staticmethod
     def count_rwkv_parameters_in_billions(rwkv_model):
         total_params = 0
-        for param in rwkv_model.w.values():
-            total_params += param.numel()
+        if hasattr(rwkv_model, "z"):
+            for param in rwkv_model.z.values():
+                total_params += param.numel()
+        if hasattr(rwkv_model, "w"):
+            for param in rwkv_model.w.values():
+                total_params += param.numel()
         return total_params / 1e9
 
     @staticmethod
