@@ -22,30 +22,28 @@ class EvaluationConfig:
     model_type: str
     data: list[str]
 
-    model_args: Dict[Any, Any] = field(
-        default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoModelForCausalLM
-    tokenizer_args: Dict[Any, Any] = field(
-        default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoTokenizer
+    model_args: Dict[Any, Any] = field(default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoModelForCausalLM
+    tokenizer_args: Dict[Any, Any] = field(default_factory=dict)  # other arguments that can be passed to the Hugging Face AutoTokenizer
 
     requirements: list[str] = field(default_factory=list)  # list of packages, will be installed automatically
 
     add_bos: bool = False  # whether to add bos token to the input sequence
-    log_path: str = './logs/'  # path to save the evaluation results
-    cache: str = './models/temp/'  # cache directory for the models
+    log_path: str = "./logs/"  # path to save the evaluation results
+    cache: str = "./models/temp/"  # cache directory for the models
     chunk_size: int = 1024  # input tokens will be split into chunks of this size
     batch_size: int = 1  # batch size for inference
 
     def __post_init__(self):
-        default_model_args = {'device_map': 'auto', 'trust_remote_code': True}
+        default_model_args = {"device_map": "auto", "trust_remote_code": True}
         self.model_args = {**default_model_args, **self.model_args}
 
-        default_tokenizer_args = {'trust_remote_code': True}
+        default_tokenizer_args = {"trust_remote_code": True}
         self.tokenizer_args = {**default_tokenizer_args, **self.tokenizer_args}
 
         if not os.path.exists(self.model_name_or_path):
             self.original_model_name_or_path = self.model_name_or_path
-            if '.pth' in self.model_name_or_path and 'rwkv' in self.model_name_or_path.lower() and self.cache:
-                self.model_name_or_path = os.path.join(self.cache, self.model_name_or_path.split('/')[-1])
+            if ".pth" in self.model_name_or_path and "rwkv" in self.model_name_or_path.lower() and self.cache:
+                self.model_name_or_path = os.path.join(self.cache, self.model_name_or_path.split("/")[-1])
 
 
 class Evaluator:
@@ -60,16 +58,16 @@ class Evaluator:
         :param file_path: Path of the JSON file to be loaded.
         :return: List of strings loaded from the JSON file.
         """
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(file_path, "r", encoding="utf-8") as file:
             return json.load(file)
 
     @staticmethod
     def default_serializer(obj):
-        if hasattr(obj, 'isoformat'):
+        if hasattr(obj, "isoformat"):
             return obj.isoformat()
-        elif hasattr(obj, 'tolist'):
+        elif hasattr(obj, "tolist"):
             return obj.tolist()
-        elif hasattr(obj, '__dict__'):
+        elif hasattr(obj, "__dict__"):
             return obj.__dict__
         else:
             return str(obj)
@@ -82,11 +80,13 @@ class Evaluator:
         :param requirements: List of packages with potential version specifiers.
         """
         for requirement in requirements:
-            package_info = requirement.split('==') if '==' in requirement else (
-                requirement.split('>=') if '>=' in requirement else (
-                    requirement.split('<=') if '<=' in requirement else [requirement]))
+            package_info = (
+                requirement.split("==")
+                if "==" in requirement
+                else (requirement.split(">=") if ">=" in requirement else (requirement.split("<=") if "<=" in requirement else [requirement]))
+            )
             package_name = package_info[0]
-            required_version_spec = requirement[len(package_name):]
+            required_version_spec = requirement[len(package_name) :]
 
             try:
                 # Check if the package is already installed
@@ -96,21 +96,20 @@ class Evaluator:
 
                 if required_version_spec:
                     # Extract the operator and the version from requirement
-                    operator = required_version_spec[:2] if required_version_spec[1] in ['=', '>'] else \
-                        required_version_spec[0]
+                    operator = required_version_spec[:2] if required_version_spec[1] in ["=", ">"] else required_version_spec[0]
                     required_version = version.parse(required_version_spec.lstrip(operator))
 
                     # Version comparison based on the operator
-                    if ((operator == '==' and installed_version == required_version) or
-                            (operator == '>=' and installed_version >= required_version) or
-                            (operator == '<=' and installed_version <= required_version)):
+                    if (
+                        (operator == "==" and installed_version == required_version)
+                        or (operator == ">=" and installed_version >= required_version)
+                        or (operator == "<=" and installed_version <= required_version)
+                    ):
                         print(f"Package {package_name} already installed and meets the requirement {requirement}.")
                     else:
                         needs_reload = True
-                        print(
-                            f"Package {package_name} version {installed_version} does not meet the requirement {requirement}, upgrading...")
-                        subprocess.check_call(
-                            [sys.executable, "-m", "pip", "install", f"{package_name}{required_version_spec}"])
+                        print(f"Package {package_name} version {installed_version} does not meet the requirement {requirement}, upgrading...")
+                        subprocess.check_call([sys.executable, "-m", "pip", "install", f"{package_name}{required_version_spec}"])
                 else:
                     print(f"Package {package_name} is already installed.")
 
@@ -135,60 +134,56 @@ class Evaluator:
         print(f"Model parameters: {total_params_billion:.3f} billion")
 
     @staticmethod
-    def print_rwkv_parameters_in_billions(rwkv_model):
+    def print_rwkv7_parameters_in_billions(rwkv_model):
         total_params = 0
-        for param in rwkv_model.w.values():
+        for param in rwkv_model.z.values():
             total_params += param.numel()
         print(f"Model parameters: {total_params / 1e9:.3f} billion")
 
     def load_hf_model(self, config: EvaluationConfig):
         from transformers import AutoTokenizer, AutoModelForCausalLM
-        hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name,
-                                                     cache_dir=config.cache,
-                                                     **config.tokenizer_args)
-        hf_model = AutoModelForCausalLM.from_pretrained(config.model_name_or_path,
-                                                        cache_dir=config.cache,
-                                                        **config.model_args
-                                                        ).eval()
+
+        hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args)
+        hf_model = AutoModelForCausalLM.from_pretrained(config.model_name_or_path, cache_dir=config.cache, **config.model_args).eval()
 
         self.print_model_parameters_in_billions(hf_model)
 
         return hf_model, hf_tokenizer
 
     def load_rwkv(self, config: EvaluationConfig):
-        os.environ['RWKV_JIT_ON'] = '1'
-        os.environ["RWKV_CUDA_ON"] = '1'
+        os.environ["RWKV_JIT_ON"] = "1"
+        os.environ["RWKV_CUDA_ON"] = "1"
 
         from rwkv.model import RWKV
         from rwkv.utils import PIPELINE
 
-        if config.model_args.get('strategy') is not None:
-            rwkv_model = RWKV(model=config.model_name_or_path, strategy=config.model_args.get('strategy'))
+        if config.model_args.get("strategy") is not None:
+            rwkv_model = RWKV(model=config.model_name_or_path, strategy=config.model_args.get("strategy"))
         else:
-            rwkv_model = RWKV(model=config.model_name_or_path, strategy='cuda fp16')
+            rwkv_model = RWKV(model=config.model_name_or_path, strategy="cuda fp16")
         rwkv_pipeline = PIPELINE(rwkv_model, config.tokenizer_name)
         rwkv_tokenizer = rwkv_pipeline.tokenizer
 
         self.print_rwkv_parameters_in_billions(rwkv_model)
 
         return rwkv_model, rwkv_tokenizer
-    
+
     def load_rwkv7(self, config: EvaluationConfig):
-        os.environ['RWKV_JIT_ON'] = '1'
-        os.environ["RWKV_CUDA_ON"] = '1'
+        os.environ["RWKV_JIT_ON"] = "1"
+        os.environ["RWKV_CUDA_ON"] = "1"
         os.environ["RWKV_V7_ON"] = "1"
 
         from rwkv.model import RWKV
         from rwkv.utils import PIPELINE
 
-        if config.model_args.get('strategy') is not None:
-            rwkv_model = RWKV(model=config.model_name_or_path.replace('.pth'), strategy=config.model_args.get('strategy'))
+        if config.model_args.get("strategy") is not None:
+            rwkv_model = RWKV(model=config.model_name_or_path.replace(".pth", ""), strategy=config.model_args.get("strategy"))
         else:
-            rwkv_model = RWKV(model=config.model_name_or_path.replace('.pth'), strategy='cuda fp16')
+            rwkv_model = RWKV(model=config.model_name_or_path.replace(".pth", ""), strategy="cuda fp16")
         rwkv_pipeline = PIPELINE(rwkv_model, config.tokenizer_name)
         rwkv_tokenizer = rwkv_pipeline.tokenizer
 
-        self.print_rwkv_parameters_in_billions(rwkv_model)
+        self.print_rwkv7_parameters_in_billions(rwkv_model)
 
         return rwkv_model, rwkv_tokenizer
 
@@ -201,7 +196,7 @@ class Evaluator:
 
         tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name)
         model = MambaLMHeadModel.from_pretrained(config.model_name_or_path, device="cuda", dtype=torch.float16)
-        model.device = torch.device('cuda')
+        model.device = torch.device("cuda")
 
         self.print_model_parameters_in_billions(model)
 
@@ -240,7 +235,7 @@ class Evaluator:
     @staticmethod
     def get_string_byte_size(input_string):
         # Encode the string into bytes using UTF-8 encoding
-        byte_array = input_string.encode('utf-8')
+        byte_array = input_string.encode("utf-8")
         # Calculate the length of the byte array
         byte_size = len(byte_array)
         return byte_size
@@ -257,7 +252,7 @@ class Evaluator:
             with torch.no_grad():
 
                 tokenized = tokenizer.encode(sample)
-                if hasattr(tokenized, 'ids'):
+                if hasattr(tokenized, "ids"):
                     input_seq = tokenized.ids  # RWKV v4pile
                 else:
                     input_seq = tokenized  # RWKV world
@@ -266,7 +261,7 @@ class Evaluator:
 
                 neg_log_prob_temp = 0
                 for begin in range(0, input_length, chunk_size):
-                    input_chunk = input_seq[begin: begin + chunk_size]
+                    input_chunk = input_seq[begin : begin + chunk_size]
 
                     logit = model.forward(input_chunk, None, full_output=True)[0]
 
@@ -281,12 +276,12 @@ class Evaluator:
                 rwkv_test_data.append(neg_log_prob_temp)
 
         data_dict = {
-            'neg_log_prob_sum': sum(rwkv_test_data) / len(rwkv_test_data),
-            'avg tokens': sum(rwkv_token_length_list) / len(rwkv_token_length_list),
-            'avg character count': sum(char_count) / len(char_count),
-            'parameters count': self.count_rwkv_parameters_in_billions(model),
-            'avg bytes': sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
-            'sample_count': len(texts)
+            "neg_log_prob_sum": sum(rwkv_test_data) / len(rwkv_test_data),
+            "avg tokens": sum(rwkv_token_length_list) / len(rwkv_token_length_list),
+            "avg character count": sum(char_count) / len(char_count),
+            "parameters count": self.count_rwkv_parameters_in_billions(model),
+            "avg bytes": sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
+            "sample_count": len(texts),
         }
 
         # print(f'log probability sum: {sum(rwkv_test_data) / len(rwkv_test_data):.2f}')
@@ -303,35 +298,33 @@ class Evaluator:
             bos_token = tokenizer.encode(tokenizer.bos_token)
             len_bos = len(bos_token)
 
-        for idx, sample in tqdm(enumerate(texts), total=len(texts), desc='Evaluating'):
+        for idx, sample in tqdm(enumerate(texts), total=len(texts), desc="Evaluating"):
 
             char_count.append(len(sample))
 
             with torch.no_grad():
 
-                inputs = tokenizer(sample, return_tensors='pt')
+                inputs = tokenizer(sample, return_tensors="pt")
                 inputs = inputs.to(model.device)
 
-                seq_length = inputs['input_ids'].shape[-1]
+                seq_length = inputs["input_ids"].shape[-1]
 
                 neg_log_prob_temp = 0
                 if add_bos:
                     for begin in range(0, seq_length, chunk_size - len_bos):
-                        input_chunk = inputs['input_ids'][:, begin: begin + chunk_size - len_bos]
+                        input_chunk = inputs["input_ids"][:, begin : begin + chunk_size - len_bos]
 
-                        input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk],
-                                                dim=-1)
+                        input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk], dim=-1)
 
                         logit = model.forward(input_ids=input_chunk).logits[0, :, :]
                         # print(logit.shape, input_chunk.squeeze(0).shape)
                         # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
 
-                        log_sum = self.calculate_log_sum(logit[len_bos:, :],
-                                                         input_chunk.squeeze(0)[len_bos:])  # exclude bos
+                        log_sum = self.calculate_log_sum(logit[len_bos:, :], input_chunk.squeeze(0)[len_bos:])  # exclude bos
                         neg_log_prob_temp += log_sum
                 else:
                     for begin in range(0, seq_length, chunk_size):
-                        input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
+                        input_chunk = inputs["input_ids"][:, begin : begin + chunk_size]
 
                         logit = model.forward(input_ids=input_chunk).logits[0, :, :]
 
@@ -351,12 +344,12 @@ class Evaluator:
                 data.append(neg_log_prob_temp)
 
         data_dict = {
-            'neg_log_prob_sum': sum(data) / len(data),
-            'avg tokens': sum(token_length_list) / len(token_length_list),
-            'avg character count': sum(char_count) / len(char_count),
-            'parameters count': self.count_model_parameters_in_billions(model),
-            'avg bytes': sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
-            'sample_count': len(texts)
+            "neg_log_prob_sum": sum(data) / len(data),
+            "avg tokens": sum(token_length_list) / len(token_length_list),
+            "avg character count": sum(char_count) / len(char_count),
+            "parameters count": self.count_model_parameters_in_billions(model),
+            "avg bytes": sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
+            "sample_count": len(texts),
         }
 
         # print(f'log probability sum: {sum(data) / len(data):.2f}')
@@ -381,28 +374,27 @@ class Evaluator:
         data = []
         token_length_list = []
         all_input_chunks = []
-        for idx, sample in tqdm(enumerate(texts), total=len(texts), desc='Tokenizing'):
+        for idx, sample in tqdm(enumerate(texts), total=len(texts), desc="Tokenizing"):
 
-            inputs = tokenizer(sample, return_tensors='pt')
+            inputs = tokenizer(sample, return_tensors="pt")
             inputs = inputs.to(model.device)
 
-            seq_length = inputs['input_ids'].shape[-1]
+            seq_length = inputs["input_ids"].shape[-1]
 
             if add_bos:
                 for begin in range(0, seq_length, chunk_size - len_bos):
-                    input_chunk = inputs['input_ids'][:, begin: begin + chunk_size - len_bos]
+                    input_chunk = inputs["input_ids"][:, begin : begin + chunk_size - len_bos]
 
                     token_length_list.append(input_chunk.shape[-1])
 
-                    input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk],
-                                            dim=-1)
+                    input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk], dim=-1)
                     all_input_chunks.append(input_chunk)
 
                     # print(logit.shape, input_chunk.squeeze(0).shape)
                     # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
             else:
                 for begin in range(0, seq_length, chunk_size):
-                    input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
+                    input_chunk = inputs["input_ids"][:, begin : begin + chunk_size]
 
                     token_length_list.append(input_chunk.shape[-1])
                     all_input_chunks.append(input_chunk)
@@ -410,15 +402,12 @@ class Evaluator:
         all_input_chunks.sort(key=lambda x: x.shape[1], reverse=True)
 
         # Process the input chunks in batches
-        for i in tqdm(range(0, len(all_input_chunks), batch_size),
-                      total=math.ceil(len(all_input_chunks) / batch_size),
-                      desc='Inference'):
+        for i in tqdm(range(0, len(all_input_chunks), batch_size), total=math.ceil(len(all_input_chunks) / batch_size), desc="Inference"):
 
-            origin_batch = all_input_chunks[i:i + batch_size]
+            origin_batch = all_input_chunks[i : i + batch_size]
             max_length = max([chunk.shape[1] for chunk in origin_batch])
 
-            padded_batch = torch.cat(
-                [F.pad(chunk, (max_length - chunk.shape[1], 0), "constant", pad_token_id) for chunk in origin_batch])
+            padded_batch = torch.cat([F.pad(chunk, (max_length - chunk.shape[1], 0), "constant", pad_token_id) for chunk in origin_batch])
             attention_mask = padded_batch != pad_token_id
 
             outputs = model(input_ids=padded_batch, attention_mask=attention_mask)
@@ -433,7 +422,7 @@ class Evaluator:
                 if add_bos:
                     # Find the first occurrence of a non-pad token which would be the BOS token
                     first_non_pad = (input_ids != pad_token_id).nonzero(as_tuple=True)[0][0]
-                    mask[first_non_pad:first_non_pad + len_bos] = 0  # Set BOS token positions to False
+                    mask[first_non_pad : first_non_pad + len_bos] = 0  # Set BOS token positions to False
 
                 masked_logits = logit[mask.bool()]  # Convert mask back to boolean for indexing
                 masked_input_ids = input_ids[mask.bool()]  # Convert mask back to boolean for indexing
@@ -442,12 +431,12 @@ class Evaluator:
                 data.append(neg_log_prob)
 
         data_dict = {
-            'neg_log_prob_sum': sum(data) / len(texts),
-            'avg tokens': sum(token_length_list) / len(texts),
-            'avg character count': sum([len(text) for text in texts]) / len(texts),
-            'parameters count': self.count_model_parameters_in_billions(model),
-            'avg bytes': sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
-            'sample_count': len(texts)
+            "neg_log_prob_sum": sum(data) / len(texts),
+            "avg tokens": sum(token_length_list) / len(texts),
+            "avg character count": sum([len(text) for text in texts]) / len(texts),
+            "parameters count": self.count_model_parameters_in_billions(model),
+            "avg bytes": sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
+            "sample_count": len(texts),
         }
 
         # print(f'log probability sum: {sum(data) / len(data):.2f}')
@@ -469,7 +458,7 @@ class Evaluator:
         file_path = os.path.join(folder_path, file_name)
 
         try:
-            with open(file_path, 'w') as file:
+            with open(file_path, "w") as file:
                 json.dump(data_dict, file, indent=4, default=self.default_serializer)
             print(f"Log saved successfully to {file_path}")
         except Exception as e:
@@ -478,70 +467,72 @@ class Evaluator:
     def evaluate(self, config: EvaluationConfig):
 
         # install requirements
-        print(f'Installing requirements: {config.requirements}')
+        print(f"Installing requirements: {config.requirements}")
         if len(config.requirements) > 0:
             self.install_requirements(config.requirements)
 
         # load model
-        print(f'Loading model {config.model_name_or_path}')
-        if config.model_type == 'hf':
+        print(f"Loading model {config.model_name_or_path}")
+        if config.model_type == "hf":
             model, tokenizer = self.load_hf_model(config)
-        elif config.model_type == 'rwkv':
+        elif config.model_type == "rwkv":
             model, tokenizer = self.load_rwkv(config)
-        elif config.model_type == 'rwkv7':
+        elif config.model_type == "rwkv7":
             model, tokenizer = self.load_rwkv7(config)
-        elif config.model_type == 'mamba':
+        elif config.model_type == "mamba":
             model, tokenizer = self.load_mamba(config)
         else:
             raise NotImplementedError
 
         for data_file in config.data:
 
-            print('-' * 80)
-            print(f'Evaluating {config.model_name_or_path} on {data_file}')
+            print("-" * 80)
+            print(f"Evaluating {config.model_name_or_path} on {data_file}")
 
             # load data
             texts = self.load_list_from_json(data_file)
             # print(f'data size: {len(texts)}')
 
             # eval
-            if config.model_type in ['hf', 'mamba']:
+            if config.model_type in ["hf", "mamba"]:
                 if config.batch_size > 1:
-                    results = self.eval_hf_model_batch(model=model,
-                                                       tokenizer=tokenizer,
-                                                       texts=texts,
-                                                       chunk_size=config.chunk_size,
-                                                       add_bos=config.add_bos,
-                                                       batch_size=config.batch_size,
-                                                       )
+                    results = self.eval_hf_model_batch(
+                        model=model,
+                        tokenizer=tokenizer,
+                        texts=texts,
+                        chunk_size=config.chunk_size,
+                        add_bos=config.add_bos,
+                        batch_size=config.batch_size,
+                    )
                 else:
-                    results = self.eval_hf_model(model=model,
-                                                 tokenizer=tokenizer,
-                                                 texts=texts,
-                                                 chunk_size=config.chunk_size,
-                                                 add_bos=config.add_bos,
-                                                 )
-            elif config.model_type == 'rwkv':
+                    results = self.eval_hf_model(
+                        model=model,
+                        tokenizer=tokenizer,
+                        texts=texts,
+                        chunk_size=config.chunk_size,
+                        add_bos=config.add_bos,
+                    )
+            elif config.model_type in ["rwkv", "rwkv7"]:
                 results = self.eval_rwkv(model=model, tokenizer=tokenizer, texts=texts, chunk_size=config.chunk_size)
             else:
                 raise NotImplementedError
 
-            results['model_name_or_path'] = config.model_name_or_path
-            results['tokenizer_name'] = config.tokenizer_name
-            results['data_path'] = data_file
-            results['chunk_size'] = config.chunk_size
-            results['add_bos'] = config.add_bos
-            results['model_args'] = config.model_args
-            results['tokenizer_args'] = config.tokenizer_args
-            results['requirements'] = config.requirements
-            results['batch_size'] = config.batch_size
-            results['compression_rate'] = results['neg_log_prob_sum'] / results['avg bytes'] * (1 / math.log(2)) * 0.125 * 100
+            results["model_name_or_path"] = config.model_name_or_path
+            results["tokenizer_name"] = config.tokenizer_name
+            results["data_path"] = data_file
+            results["chunk_size"] = config.chunk_size
+            results["add_bos"] = config.add_bos
+            results["model_args"] = config.model_args
+            results["tokenizer_args"] = config.tokenizer_args
+            results["requirements"] = config.requirements
+            results["batch_size"] = config.batch_size
+            results["compression_rate"] = results["neg_log_prob_sum"] / results["avg bytes"] * (1 / math.log(2)) * 0.125 * 100
 
             self.make_log(results, config.log_path)
 
-            print(f'Finished evaluating {config.model_name_or_path} on {data_file}')
+            print(f"Finished evaluating {config.model_name_or_path} on {data_file}")
             print(json.dumps(results, indent=4, ensure_ascii=False, default=self.default_serializer))
-            print('-' * 80)
+            print("-" * 80)
 
         del model
         del tokenizer

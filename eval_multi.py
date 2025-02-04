@@ -4,21 +4,21 @@ import torch
 import gc
 
 data_list = [
-    'data/ao3_english_20240801to20240815.json',
-    'data/arxiv_computer_science_20240801to20240815.json',
-    'data/arxiv_physics_20240801to20240815.json',
-    'data/bbc_news_20240801to20240815.json',
-    'data/github_cpp_20240801to20240815.json',
-    'data/github_python_20240801to20240815.json',
-    'data/wikipedia_english_20240801to20240815.json'
+    "data/ao3_english_20250101to20250115.json",
+    "data/arxiv_computer_science_20250101to20250115.json",
+    "data/arxiv_physics_20250101to20250115.json",
+    "data/bbc_news_20250101to20250115.json",
+    "data/github_cpp_20250101to20250115.json",
+    "data/github_python_20250101to20250115.json",
+    "data/wikipedia_english_20250101to20250115.json",
 ]
 
 config_list = [
     # ~1.5B
     EvaluationConfig(
-        model_name_or_path='Qwen/Qwen2-1.5B',
-        tokenizer_name='Qwen/Qwen2-1.5B',
-        model_type='hf',
+        model_name_or_path="BlinkDL/rwkv-7-world/RWKV-x070-World-1.5B-v3-20250127-ctx4096.pth",
+        tokenizer_name="rwkv_vocab_v20230424",
+        model_type="rwkv7",
         data=data_list,
     ),
     # EvaluationConfig(
@@ -161,7 +161,6 @@ config_list = [
     #     model_type='hf',
     #     data=data_list,
     # ),  # This model is not supported yet
-
     # ~3B
     # EvaluationConfig(
     #     model_name_or_path='BlinkDL/rwkv-6-world/RWKV-x060-World-3B-v2.1-20240417-ctx4096.pth',
@@ -327,7 +326,6 @@ config_list = [
     #     data=data_list,
     #     requirements=['mamba-ssm', 'causal-conv1d>=1.2.0']
     # ),
-
     # ~7B
     # EvaluationConfig(
     #     model_name_or_path='meta-llama/Meta-Llama-3-8B',
@@ -449,7 +447,6 @@ config_list = [
     #     data=data_list,
     #     model_args={'torch_dtype': torch.bfloat16}
     # ),
-
     # ~9B
     # EvaluationConfig(
     #     model_name_or_path='google/gemma-7b',
@@ -481,7 +478,6 @@ config_list = [
     #     add_bos=True,
     #     requirements=['transformers==4.42.4'],
     # ),
-
     # ~14B
     # EvaluationConfig(
     #     model_name_or_path='Qwen/Qwen1.5-14B',
@@ -512,7 +508,6 @@ config_list = [
     #     requirements=['rwkv'],
     #     model_args={'strategy': "cuda:0 fp16 *32 -> cuda:1 fp16"}
     # ),
-
     # others
     # EvaluationConfig(
     #     model_name_or_path='Qwen/Qwen2-0.5B',
@@ -521,9 +516,15 @@ config_list = [
     #     data=data_list,
     #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path="BlinkDL/rwkv-7-world/RWKV-x070-World-0.4B-v2.9-20250107-ctx4096.pth",
+    #     tokenizer_name="rwkv_vocab_v20230424",
+    #     model_type="rwkv7",
+    #     data=data_list,
+    # ),
 ]
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     success_models = []
     failed_models = []
     for config in config_list:
