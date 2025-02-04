@@ -13,7 +13,7 @@ def save_json(my_data, file_name):
     file_name = file_name.replace('.json', '') + '.json'
     path = os.path.join('data', file_name)
 
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         json.dump(my_data, f, ensure_ascii=True, indent=4)
 
 

@@ -4,13 +4,13 @@ import torch
 import gc
 
 data_list = [
-    'data/ao3_english_20240601to20240615.json',
-    'data/arxiv_computer_science_20240601to20240615.json',
-    'data/arxiv_physics_20240601to20240615.json',
-    'data/bbc_news_20240601to20240615.json',
-    'data/github_cpp_20240601to20240615.json',
-    'data/github_python_20240601to20240615.json',
-    'data/wikipedia_english_20240601to20240615.json'
+    'data/ao3_english_20240801to20240815.json',
+    'data/arxiv_computer_science_20240801to20240815.json',
+    'data/arxiv_physics_20240801to20240815.json',
+    'data/bbc_news_20240801to20240815.json',
+    'data/github_cpp_20240801to20240815.json',
+    'data/github_python_20240801to20240815.json',
+    'data/wikipedia_english_20240801to20240815.json'
 ]
 
 config_list = [
@@ -148,6 +148,19 @@ config_list = [
     #     model_type='hf',
     #     data=data_list,
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path='state-spaces/mamba2-1.3b',
+    #     tokenizer_name='EleutherAI/gpt-neox-20b',
+    #     model_type='mamba',
+    #     data=data_list,
+    #     requirements=['mamba-ssm', 'causal-conv1d>=1.2.0']
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='cartesia-ai/Rene-v0.1-1.3b-pytorch',
+    #     tokenizer_name='allenai/OLMo-1B-hf',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),  # This model is not supported yet
 
     # ~3B
     # EvaluationConfig(
@@ -266,8 +279,56 @@ config_list = [
     #     model_type='hf',
     #     data=data_list,
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path='nvidia/Minitron-4B-Base',
+    #     tokenizer_name='nvidia/Minitron-4B-Base',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'torch_dtype': torch.bfloat16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='nvidia/Llama-3.1-Minitron-4B-Width-Base',
+    #     tokenizer_name='nvidia/Llama-3.1-Minitron-4B-Width-Base',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'torch_dtype': torch.bfloat16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='nvidia/Llama-3.1-Minitron-4B-Depth-Base',
+    #     tokenizer_name='nvidia/Llama-3.1-Minitron-4B-Depth-Base',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'torch_dtype': torch.bfloat16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='microsoft/Phi-3.5-mini-instruct',
+    #     tokenizer_name='microsoft/Phi-3.5-mini-instruct',
+    #     model_type='hf',
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='Zyphra/Zamba2-2.7B',
+    #     tokenizer_name='Zyphra/Zamba2-2.7B',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'torch_dtype': torch.bfloat16}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='state-spaces/mamba2-2.7b',
+    #     tokenizer_name='EleutherAI/gpt-neox-20b',
+    #     model_type='mamba',
+    #     data=data_list,
+    #     requirements=['mamba-ssm', 'causal-conv1d>=1.2.0']
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='state-spaces/mamba2attn-2.7b',
+    #     tokenizer_name='EleutherAI/gpt-neox-20b',
+    #     model_type='mamba',
+    #     data=data_list,
+    #     requirements=['mamba-ssm', 'causal-conv1d>=1.2.0']
+    # ),
 
-    # # ~7B
+    # ~7B
     # EvaluationConfig(
     #     model_name_or_path='meta-llama/Meta-Llama-3-8B',
     #     tokenizer_name='meta-llama/Meta-Llama-3-8B',
@@ -355,34 +416,6 @@ config_list = [
     #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
     # ),
     # EvaluationConfig(
-    #     model_name_or_path='m-a-p/neo_7b',
-    #     tokenizer_name='m-a-p/neo_7b',
-    #     model_type='hf',
-    #     data=data_list,
-    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
-    # ),
-    # EvaluationConfig(
-    #     model_name_or_path='CohereForAI/aya-23-8B',
-    #     tokenizer_name='CohereForAI/aya-23-8B',
-    #     model_type='hf',
-    #     data=data_list,
-    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
-    # ),
-    # EvaluationConfig(
-    #     model_name_or_path='internlm/internlm2_5-7b',
-    #     tokenizer_name='internlm/internlm2_5-7b',
-    #     model_type='hf',
-    #     data=data_list,
-    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
-    # ),
-    # EvaluationConfig(
-    #     model_name_or_path='qihoo360/360Zhinao-7B-Base',
-    #     tokenizer_name='qihoo360/360Zhinao-7B-Base',
-    #     model_type='hf',
-    #     data=data_list,
-    #     requirements=['icecream', 'transformers==4.37.2'],
-    # ),
-    # EvaluationConfig(
     #     model_name_or_path='TRI-ML/mamba-7b-rw',
     #     tokenizer_name='TRI-ML/mamba-7b-rw',
     #     model_type='hf',
@@ -401,6 +434,20 @@ config_list = [
     #     model_type='hf',
     #     data=data_list,
     #     requirements=['einops'],
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='nvidia/Minitron-8B-Base',
+    #     tokenizer_name='nvidia/Minitron-8B-Base',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.bfloat16, 'device_map': 'cuda'}
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path='Zyphra/Zamba-7B-v1',
+    #     tokenizer_name='Zyphra/Zamba-7B-v1',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'torch_dtype': torch.bfloat16}
     # ),
 
     # ~9B
@@ -464,6 +511,15 @@ config_list = [
     #     data=data_list,
     #     requirements=['rwkv'],
     #     model_args={'strategy': "cuda:0 fp16 *32 -> cuda:1 fp16"}
+    # ),
+
+    # others
+    # EvaluationConfig(
+    #     model_name_or_path='Qwen/Qwen2-0.5B',
+    #     tokenizer_name='Qwen/Qwen2-0.5B',
+    #     model_type='hf',
+    #     data=data_list,
+    #     model_args={'attn_implementation': "flash_attention_2", 'torch_dtype': torch.float16}
     # ),
 ]
 
