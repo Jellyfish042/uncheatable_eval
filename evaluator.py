@@ -143,7 +143,7 @@ class Evaluator:
     @staticmethod
     def print_rwkv_parameters_in_billions(rwkv_model):
         total_params = 0
-        for param in rwkv_model.z.values():
+        for param in rwkv_model.w.values():
             total_params += param.numel()
         print(f"Model parameters: {total_params / 1e9:.3f} billion")
 
