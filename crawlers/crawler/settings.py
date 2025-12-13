@@ -11,3 +11,10 @@ DOWNLOAD_DELAY = 0.0
 ITEM_PIPELINES = {}
 
 FEED_EXPORT_ENCODING = "utf-8"
+
+# You can add your own proxies to the ROTATING_PROXY_LIST
+DOWNLOADER_MIDDLEWARES = {
+    "rotating_proxies.middlewares.RotatingProxyMiddleware": 610,
+    "rotating_proxies.middlewares.BanDetectionMiddleware": 620,
+}
+ROTATING_PROXY_LIST = ["http://127.0.0.1:8890"]

@@ -95,7 +95,7 @@ class GithubSpider(scrapy.Spider):
                 url=tree_url,
                 headers=self.headers,
                 callback=self.parse_tree,
-                meta={"repo_url": repo["html_url"], "repo_name": f"{owner}/{repo_name}", "push_date": push_date, "branch": default_branch},
+                meta={"repo_url": repo["html_url"], "repo_name": f"{owner}/{repo_name}", "push_date": push_date},
             )
 
         current_page = response.meta["page"]
@@ -140,6 +140,7 @@ class GithubSpider(scrapy.Spider):
                 item["category"] = f"github_{self.subtitle}"
                 item["date"] = response.meta["push_date"]
                 item["url"] = response.meta["content_permanent_url"]
+                item["metadata"] = {}
                 yield item
 
             except Exception as e:
