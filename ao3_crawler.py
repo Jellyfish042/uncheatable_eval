@@ -22,23 +22,22 @@ class AO3Crawler:
 
     @staticmethod
     def extract_filtered_work_ids(html):
-        soup = BeautifulSoup(html, 'html.parser')
-        work_links = soup.select(
-            'ol.work.index.group li.work.blurb.group a[href^="/works/"]:not([href*="?"]):not([href*="#"])')
+        soup = BeautifulSoup(html, "html.parser")
+        work_links = soup.select('ol.work.index.group li.work.blurb.group a[href^="/works/"]:not([href*="?"]):not([href*="#"])')
         work_ids = []
         for link in work_links:
-            work_url = link.get('href')
-            if not work_url.endswith('bookmarks') and not work_url.endswith('collections'):
-                if 'chapters' in work_url:
-                    work_url = work_url.split('/chapters')[0]
-                work_id = work_url.split('/')[-1] if '/' in work_url else ''
+            work_url = link.get("href")
+            if not work_url.endswith("bookmarks") and not work_url.endswith("collections"):
+                if "chapters" in work_url:
+                    work_url = work_url.split("/chapters")[0]
+                work_id = work_url.split("/")[-1] if "/" in work_url else ""
                 work_ids.append(work_id)
         return work_ids
 
     @staticmethod
     def calculate_dates(start_date_str, end_date_str):
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
         today = datetime.today().date()
         if start_date >= today or end_date >= today:
             return "Error: Dates must be earlier than today."
@@ -49,11 +48,9 @@ class AO3Crawler:
 
     @staticmethod
     def get_work(work_id, retries=3, delay=2, proxies=None):
-        url = f'https://archiveofourown.org/works/{work_id}'
-        xpaths = [
-            '//div[@id="chapters"]/div[@class="userstuff"]//p',
-            '//div[@id="chapter-1"]/div[@class="userstuff module"]//p'
-        ]
+        # print(proxies)
+        url = f"https://archiveofourown.gay/works/{work_id}"
+        xpaths = ['//div[@id="chapters"]/div[@class="userstuff"]//p', '//div[@id="chapter-1"]/div[@class="userstuff module"]//p']
 
         for attempt in range(retries):
             try:
@@ -63,9 +60,9 @@ class AO3Crawler:
                     for xpath in xpaths:
                         paragraphs = tree.xpath(xpath)
                         if paragraphs:
-                            result = [paragraph.text_content().replace('\xa0', '\n') for paragraph in paragraphs]
-                            result = ''.join(result)
-                            result = re.sub(r'\n+', '\n', result)
+                            result = [paragraph.text_content().replace("\xa0", "\n") for paragraph in paragraphs]
+                            result = "".join(result)
+                            result = re.sub(r"\n+", "\n", result)
                             return result.strip()
             except requests.RequestException:
                 pass
@@ -73,12 +70,14 @@ class AO3Crawler:
         return []
 
     @staticmethod
-    def fetch_url_with_retries(url, max_retries=3, delay=2, verify=True, proxies=None):
+    def fetch_url_with_retries(url, max_retries=5, delay=2, verify=True, proxies=None):
         retries = 0
         while retries < max_retries:
-            # print('fetch_url_with_retries', url, retries)
+            # print("fetch_url_with_retries", url, retries)
             try:
+                # response = requests.get(url, headers=headers, verify=True, proxies=proxies, timeout=(5, 10))
                 response = requests.get(url, verify=verify, proxies=proxies, timeout=(5, 10))
+                # print(response.text)
                 return response
             except RequestException:
                 retries += 1
@@ -90,10 +89,10 @@ class AO3Crawler:
             if self.stop_signal:
                 # print('producer stop')
                 break
-            url = url_template.replace('<PAGE>', str(page)).replace('<LANGUAGE_ID>', str(language_id)).replace('<TIME>',
-                                                                                                               set_time)
+            url = url_template.replace("<PAGE>", str(page)).replace("<LANGUAGE_ID>", str(language_id)).replace("<TIME>", set_time)
             proxy = manager.get_random_proxy()
-            response = self.fetch_url_with_retries(url, proxies=proxy)
+            response = self.fetch_url_with_retries(url, proxies=None)
+            # print(response.status_code, url)
             if response.status_code == 200:
                 content = response.text
                 work_ids = self.extract_filtered_work_ids(content)
@@ -123,14 +122,14 @@ class AO3Crawler:
             self.queue.get()
             self.queue.task_done()
 
-    def pipeline(self, start_date, end_date, language_id='1', num_works=1000, max_workers=5, max_page=100,
-                 min_char=2000, max_char=5000, manager=None):
+    def pipeline(
+        self, start_date, end_date, language_id="1", num_works=1000, max_workers=5, max_page=100, min_char=2000, max_char=5000, manager=None
+    ):
         set_time = self.calculate_dates(start_date, end_date)
-        url_template = 'https://archiveofourown.org/works/search?commit=Search&page=<PAGE>&work_search[language_id]=<LANGUAGE_ID>&work_search%5Brevised_at=<TIME>&work_search[single_chapter]=0&work_search[sort_column]=created_at&work_search[sort_direction]=desc'
+        url_template = "https://archiveofourown.gay/works/search?commit=Search&page=<PAGE>&work_search[language_id]=<LANGUAGE_ID>&work_search%5Brevised_at=<TIME>&work_search[single_chapter]=0&work_search[sort_column]=created_at&work_search[sort_direction]=desc"
         pbar = tqdm(total=num_works)
 
-        producer_thread = threading.Thread(target=self.producer,
-                                           args=(url_template, set_time, language_id, max_page, manager))
+        producer_thread = threading.Thread(target=self.producer, args=(url_template, set_time, language_id, max_page, manager))
         producer_thread.start()
 
         consumer_threads = []
@@ -147,27 +146,24 @@ class AO3Crawler:
 
 
 LANGUAGE_MAP = {
-    'english': '1',
-    'chinese': 'zh',
+    "english": "1",
+    "chinese": "zh",
 }
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--start_date', type=str, required=True, help='Start date in the format YYYY-MM-DD')
-    parser.add_argument('--end_date', type=str, required=True, help='End date in the format YYYY-MM-DD')
-    parser.add_argument('--file_name', type=str, required=True, help='JSON file name')
-    parser.add_argument('--language', type=str, default='english', choices=['english', 'chinese'],
-                        help='Programming language to filter the repositories.')
+    parser.add_argument("--start_date", type=str, required=True, help="Start date in the format YYYY-MM-DD")
+    parser.add_argument("--end_date", type=str, required=True, help="End date in the format YYYY-MM-DD")
+    parser.add_argument("--file_name", type=str, required=True, help="JSON file name")
+    parser.add_argument(
+        "--language", type=str, default="english", choices=["english", "chinese"], help="Programming language to filter the repositories."
+    )
 
-    parser.add_argument('--max_works', type=int, default=1000,
-                        help='Maximum number of works to crawl. Default is 1000.')
-    parser.add_argument('--min_length', type=int, default=2000,
-                        help='Minimum length of the files to be considered.')
-    parser.add_argument('--max_length', type=int, default=5000,
-                        help='Maximum length. Default is 5000 characters.')
-    parser.add_argument('--max_workers', type=int, default=1,
-                        help='Max workers')
+    parser.add_argument("--max_works", type=int, default=1000, help="Maximum number of works to crawl. Default is 1000.")
+    parser.add_argument("--min_length", type=int, default=2000, help="Minimum length of the files to be considered.")
+    parser.add_argument("--max_length", type=int, default=5000, help="Maximum length. Default is 5000 characters.")
+    parser.add_argument("--max_workers", type=int, default=1, help="Max workers")
 
     args = parser.parse_args()
 
