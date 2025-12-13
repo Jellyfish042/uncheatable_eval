@@ -38,6 +38,21 @@ class GitHubDuplicateFilterPipeline:
         return item
 
 
+class AO3DuplicateFilterPipeline:
+    def __init__(self):
+        self.seen_authors = set()
+
+    def process_item(self, item, spider):
+        authors = item.get("metadata", []).get("authors", [])
+        for author in authors:
+            if author in self.seen_authors:
+                spider.logger.info(f"Author {author} already seen.")
+                raise DropItem(f"Author {author} already seen.")
+            else:
+                self.seen_authors.add(author)
+        return item
+
+
 class MinHashLSHDuplicateFilterPipeline:
     def __init__(self, threshold=0.9, num_perm=128, ngram_size=5):
         self.lsh = MinHashLSH(threshold=threshold, num_perm=num_perm)
@@ -76,6 +91,10 @@ class MinHashLSHDuplicateFilterPipeline:
 
 
 class JsonWriterPipeline:
+    def __init__(self, target=None):
+        self.counter = 0
+        self.target = target
+
     def open_spider(self, spider):
         if not os.path.exists("data"):
             os.makedirs("data")
@@ -85,7 +104,18 @@ class JsonWriterPipeline:
         file_name = f"{main_title}_{subtitle}_{date_range}.jsonl"
         self.file = open(f"data/{file_name}", "w", encoding="utf-8")
 
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(target=crawler.settings.getint("CLOSESPIDER_ITEMCOUNT", None))
+
     def process_item(self, item, spider):
+        self.counter += 1
+        total = getattr(self, "target", None)
+        if total:
+            percent = (self.counter / total) * 100
+            spider.logger.info(f"Progress: {self.counter} / {total} ({percent:.2f}%)")
+        else:
+            spider.logger.info(f"Progress: {self.counter}")
         line = json.dumps(dict(item), ensure_ascii=False) + "\n"
         self.file.write(line)
         return item
