@@ -1,0 +1,13 @@
+BOT_NAME = "crawler"
+SPIDER_MODULES = ["crawler.spiders"]
+NEWSPIDER_MODULE = "crawler.spiders"
+
+ROBOTSTXT_OBEY = False
+
+CONCURRENT_REQUESTS = 16
+
+DOWNLOAD_DELAY = 0.0
+
+ITEM_PIPELINES = {}
+
+FEED_EXPORT_ENCODING = "utf-8"

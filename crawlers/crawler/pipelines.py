@@ -1,0 +1,94 @@
+from scrapy.exceptions import DropItem
+import json
+import os
+from datasketch import MinHash, MinHashLSH
+
+
+class LengthFilterPipeline:
+    def __init__(self, min_len, cut_off_len):
+        self.min_len = min_len
+        self.cut_off_len = cut_off_len
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(min_len=crawler.settings.getint("MIN_LENGTH", 1000), cut_off_len=crawler.settings.getint("CUT_OFF_LENGTH", 1e6))
+
+    def process_item(self, item, spider):
+        content = item.get("content", "")
+
+        if len(content) < self.min_len:
+            raise DropItem(f"Content length {len(content)} out of range.")
+
+        item["content"] = content[: self.cut_off_len]
+
+        return item
+
+
+class GitHubDuplicateFilterPipeline:
+    def __init__(self):
+        self.seen_authors = set()
+
+    def process_item(self, item, spider):
+        url = item.get("url", "")
+        author = url.replace("https://github.com/", "").split("/")[0]
+        if author in self.seen_authors:
+            spider.logger.info(f"Author {author} already seen.")
+            raise DropItem(f"Author {author} already seen.")
+        self.seen_authors.add(author)
+        return item
+
+
+class MinHashLSHDuplicateFilterPipeline:
+    def __init__(self, threshold=0.9, num_perm=128, ngram_size=5):
+        self.lsh = MinHashLSH(threshold=threshold, num_perm=num_perm)
+        self.num_perm = num_perm
+        self.ngram_size = ngram_size
+
+    def _normalize(self, text):
+        text = text.lower()
+        return text
+
+    def _get_shingles(self, text):
+        if len(text) < self.ngram_size:
+            return {text}
+        shingles = set()
+        for i in range(len(text) - self.ngram_size + 1):
+            shingles.add(text[i : i + self.ngram_size])
+        return shingles
+
+    def compute_minhash(self, text):
+        clean_text = self._normalize(text)
+        m = MinHash(num_perm=self.num_perm)
+        shingles = self._get_shingles(clean_text)
+        for s in shingles:
+            m.update(s.encode("utf8"))
+        return m
+
+    def process_item(self, item, spider):
+        content = item.get("content", "")
+        m = self.compute_minhash(content)
+        result = self.lsh.query(m)
+        if result:
+            spider.logger.info(f"Duplicate content found: {result[:100]}")
+            raise DropItem(f"Duplicate content found.")
+        self.lsh.insert(item["url"], m)
+        return item
+
+
+class JsonWriterPipeline:
+    def open_spider(self, spider):
+        if not os.path.exists("data"):
+            os.makedirs("data")
+        main_title = spider.name
+        subtitle = spider.subtitle
+        date_range = f"{spider.start_date.replace('-', '')}to{spider.end_date.replace('-', '')}"
+        file_name = f"{main_title}_{subtitle}_{date_range}.jsonl"
+        self.file = open(f"data/{file_name}", "w", encoding="utf-8")
+
+    def process_item(self, item, spider):
+        line = json.dumps(dict(item), ensure_ascii=False) + "\n"
+        self.file.write(line)
+        return item
+
+    def close_spider(self, spider):
+        self.file.close()

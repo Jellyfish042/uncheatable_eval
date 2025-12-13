@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+
+.idea/
+
+logs/
+models/
+
+*.sh
+*.jsonl
