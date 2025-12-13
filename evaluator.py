@@ -52,14 +52,13 @@ class Evaluator:
 
     @staticmethod
     def load_list_from_json(file_path):
-        """
-        Loads a list of strings from a JSON file.
-
-        :param file_path: Path of the JSON file to be loaded.
-        :return: List of strings loaded from the JSON file.
-        """
-        with open(file_path, "r", encoding="utf-8") as file:
-            return json.load(file)
+        if file_path.endswith(".jsonl"):
+            with open(file_path, "r", encoding="utf-8") as file:
+                data = [line for line in file]
+            return [json.loads(line)["content"] for line in data]
+        else:
+            with open(file_path, "r", encoding="utf-8") as file:
+                return json.load(file)
 
     @staticmethod
     def default_serializer(obj):
