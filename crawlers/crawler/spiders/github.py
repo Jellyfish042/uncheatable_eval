@@ -17,8 +17,6 @@ class GithubSpider(scrapy.Spider):
             "crawler.pipelines.MinHashLSHDuplicateFilterPipeline": 300,
             "crawler.pipelines.JsonWriterPipeline": 400,
         },
-        "MIN_LENGTH": 1000,
-        "CUT_OFF_LENGTH": 1e6,
         "CLOSESPIDER_ITEMCOUNT": 500,
         "LOG_LEVEL": "INFO",
     }
