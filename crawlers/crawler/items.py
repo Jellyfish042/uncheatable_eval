@@ -15,3 +15,11 @@ class AO3WorkItem(scrapy.Item):
     url = scrapy.Field()
     date = scrapy.Field()
     metadata = scrapy.Field()
+
+
+class BBCNewsItem(scrapy.Item):
+    content = scrapy.Field()
+    category = scrapy.Field()
+    url = scrapy.Field()
+    date = scrapy.Field()
+    metadata = scrapy.Field()

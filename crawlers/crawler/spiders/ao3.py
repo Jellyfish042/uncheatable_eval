@@ -16,12 +16,8 @@ class AO3Spider(scrapy.Spider):
             "crawler.pipelines.MinHashLSHDuplicateFilterPipeline": 300,
             "crawler.pipelines.JsonWriterPipeline": 400,
         },
-        "MIN_LENGTH": 1000,
-        "CUT_OFF_LENGTH": 1e6,
         "CLOSESPIDER_ITEMCOUNT": 500,
         "DOWNLOAD_DELAY": 0.1,
-        "CONCURRENT_REQUESTS": 16,
-        "ROBOTSTXT_OBEY": False,
         "LOG_LEVEL": "INFO",
     }
 
