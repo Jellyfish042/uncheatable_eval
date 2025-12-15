@@ -23,3 +23,11 @@ class BBCNewsItem(scrapy.Item):
     url = scrapy.Field()
     date = scrapy.Field()
     metadata = scrapy.Field()
+
+
+class WikipediaArticleItem(scrapy.Item):
+    content = scrapy.Field()
+    category = scrapy.Field()
+    url = scrapy.Field()
+    date = scrapy.Field()
+    metadata = scrapy.Field()
