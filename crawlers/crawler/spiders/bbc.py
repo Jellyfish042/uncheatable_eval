@@ -1,9 +1,8 @@
 import scrapy
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from jsonpath_ng import parse
-from twisted import logger
 from crawler.items import BBCNewsItem
 
 
@@ -116,8 +115,8 @@ class BBCSpider(scrapy.Spider):
                     texts.insert(0, title)
                 if block.get("type") == "timestamp":
                     timestamp_ms = block.get("model", {}).get("timestamp")
-                    dt_object = datetime.fromtimestamp(timestamp_ms / 1000.0)
-                    iso_date = dt_object.isoformat()
+                    dt_object = datetime.fromtimestamp(timestamp_ms / 1000.0, tz=timezone.utc)
+                    iso_date = dt_object.replace(microsecond=0).isoformat().replace("+00:00", "Z")
                 if block.get("type") == "text":
                     text_model = block.get("model", {})
                     for sub_block in text_model.get("blocks", []):

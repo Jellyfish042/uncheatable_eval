@@ -1,7 +1,7 @@
 import scrapy
 from crawler.items import AO3WorkItem
 from urllib.parse import urlencode
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 
 
@@ -88,7 +88,6 @@ class AO3Spider(scrapy.Spider):
     def parse_work(self, response):
 
         xpaths = ['//div[@id="chapters"]/div[@class="userstuff"]//p', '//div[@id="chapter-1"]/div[@class="userstuff module"]//p']
-
         content_paragraphs = []
         for xpath in xpaths:
             nodes = response.xpath(xpath)
@@ -96,6 +95,8 @@ class AO3Spider(scrapy.Spider):
                 content_paragraphs = nodes.xpath("string(.)").getall()
                 break
 
+        raw_title = response.css("h2.title.heading::text").get()
+        title = raw_title.strip() if raw_title else "Unknown"
         authors = response.css("h3.byline.heading a::text").getall()
         raw_language = response.css("dd.language::text").get()
         language = raw_language.strip() if raw_language else "Unknown"
@@ -103,20 +104,22 @@ class AO3Spider(scrapy.Spider):
         if content_paragraphs:
             text_content = "\n".join([p.replace("\xa0", "") for p in content_paragraphs])
             text_content = re.sub(r"\n+", "\n", text_content).strip()
+            text_content = title + "\n" + text_content
 
             item = AO3WorkItem()
             item["content"] = text_content
             item["category"] = f"ao3_{self.subtitle}"
-            item["url"] = response.url
+            item["url"] = response.url.replace("?show_comments=true", "")
             item["date"] = self.extract_date_from_page(response)
-            item["metadata"] = {"authors": authors, "language": language}
+            item["metadata"] = {"authors": authors, "language": language, "title": title}
 
             yield item
 
     def extract_date_from_page(self, response):
         date_str = response.css("dd.published::text").get().strip()
         dt = datetime.strptime(date_str, "%Y-%m-%d")
-        return dt.isoformat()
+        dt_aware = dt.replace(tzinfo=timezone.utc)
+        return dt_aware.isoformat().replace("+00:00", "Z")
 
     @staticmethod
     def calculate_dates(start_date_str, end_date_str):
