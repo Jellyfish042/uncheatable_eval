@@ -31,3 +31,11 @@ class WikipediaArticleItem(scrapy.Item):
     url = scrapy.Field()
     date = scrapy.Field()
     metadata = scrapy.Field()
+
+
+class ArxivPaperItem(scrapy.Item):
+    content = scrapy.Field()
+    category = scrapy.Field()
+    url = scrapy.Field()
+    date = scrapy.Field()
+    metadata = scrapy.Field()

@@ -56,7 +56,7 @@ def main():
     parser = argparse.ArgumentParser(description="Process JSONL files using soft truncation strategy to truncate text content")
     parser.add_argument("input_path", help="Input JSONL file path or directory path")
     parser.add_argument("output_path", nargs="?", help="Output JSONL file path or directory path (optional, auto-generated if input is a directory)")
-    parser.add_argument("--cut-off-length", type=int, default=5000, help="Target truncation length (default: 5000)")
+    parser.add_argument("--cut-off-length", type=int, default=10000, help="Target truncation length (default: 5000)")
     parser.add_argument("--max-sample", type=int, default=500, help="Maximum number of samples to process (default: 500)")
     parser.add_argument("--search-range", type=int, default=100, help="Soft truncation search range (default: 100)")
 
