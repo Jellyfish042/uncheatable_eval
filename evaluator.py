@@ -30,7 +30,7 @@ class EvaluationConfig:
     add_bos: bool = False  # whether to add bos token to the input sequence
     log_path: str = "./logs/"  # path to save the evaluation results
     cache: str = "./models/temp/"  # cache directory for the models
-    chunk_size: int = 1024  # input tokens will be split into chunks of this size
+    chunk_size: int = 4000  # input tokens will be split into chunks of this size
     batch_size: int = 1  # batch size for inference
 
     def __post_init__(self):
@@ -474,6 +474,40 @@ class Evaluator:
         except Exception as e:
             print(f"Error saving dictionary: {e}")
 
+    @staticmethod
+    def load_data_smart(dataset_name_or_path):
+
+        if dataset_name_or_path.endswith(".jsonl"):
+            with open(dataset_name_or_path, "r", encoding="utf-8") as file:
+                data = [line for line in file]
+            return [{"name": dataset_name_or_path, "texts": [json.loads(line)["content"] for line in data]}]
+        elif dataset_name_or_path.endswith(".json"):
+            with open(dataset_name_or_path, "r", encoding="utf-8") as file:
+                return [{"name": dataset_name_or_path, "texts": json.load(file)}]
+        else:
+            from datasets import load_dataset
+            from datasets.exceptions import DatasetNotFoundError
+
+            try:
+                from collections import defaultdict
+
+                dataset = load_dataset(dataset_name_or_path)["test"]
+                category_map = defaultdict(list)
+                for row in dataset:
+                    cat = f'{dataset_name_or_path}-{row["category"]}'
+                    content = row["content"]
+                    category_map[cat].append(content)
+                return [{"name": category, "texts": texts} for category, texts in category_map.items()]
+            except DatasetNotFoundError:
+                print(f"Error: '{dataset_name_or_path}' is neither a local path nor a valid Hugging Face dataset name.")
+                return []
+            except FileNotFoundError:
+                print(f"Error: '{dataset_name_or_path}' is neither a local path nor a valid Hugging Face dataset name.")
+                return []
+            except Exception as e:
+                print(f"An error occurred while attempting to load dataset from Hugging Face: {e}")
+                return []
+
     def evaluate(self, config: EvaluationConfig):
 
         # install requirements
@@ -494,55 +528,58 @@ class Evaluator:
         else:
             raise NotImplementedError
 
-        for data_file in config.data:
+        for dataset_name_or_path in config.data:
 
-            print("-" * 80)
-            print(f"Evaluating {config.model_name_or_path} on {data_file}")
+            dataset = self.load_data_smart(dataset_name_or_path)
 
-            # load data
-            texts = self.load_list_from_json(data_file)
-            # print(f'data size: {len(texts)}')
+            for data in dataset:
 
-            # eval
-            if config.model_type in ["hf", "mamba"]:
-                if config.batch_size > 1:
-                    results = self.eval_hf_model_batch(
-                        model=model,
-                        tokenizer=tokenizer,
-                        texts=texts,
-                        chunk_size=config.chunk_size,
-                        add_bos=config.add_bos,
-                        batch_size=config.batch_size,
-                    )
+                data_name = data["name"]
+                texts = data["texts"]
+
+                print("-" * 80)
+                print(f"Evaluating {config.model_name_or_path} on {data_name}")
+
+                # eval
+                if config.model_type in ["hf", "mamba"]:
+                    if config.batch_size > 1:
+                        results = self.eval_hf_model_batch(
+                            model=model,
+                            tokenizer=tokenizer,
+                            texts=texts,
+                            chunk_size=config.chunk_size,
+                            add_bos=config.add_bos,
+                            batch_size=config.batch_size,
+                        )
+                    else:
+                        results = self.eval_hf_model(
+                            model=model,
+                            tokenizer=tokenizer,
+                            texts=texts,
+                            chunk_size=config.chunk_size,
+                            add_bos=config.add_bos,
+                        )
+                elif config.model_type in ["rwkv", "rwkv7"]:
+                    results = self.eval_rwkv(model=model, tokenizer=tokenizer, texts=texts, chunk_size=config.chunk_size)
                 else:
-                    results = self.eval_hf_model(
-                        model=model,
-                        tokenizer=tokenizer,
-                        texts=texts,
-                        chunk_size=config.chunk_size,
-                        add_bos=config.add_bos,
-                    )
-            elif config.model_type in ["rwkv", "rwkv7"]:
-                results = self.eval_rwkv(model=model, tokenizer=tokenizer, texts=texts, chunk_size=config.chunk_size)
-            else:
-                raise NotImplementedError
+                    raise NotImplementedError
 
-            results["model_name_or_path"] = config.model_name_or_path
-            results["tokenizer_name"] = config.tokenizer_name
-            results["data_path"] = data_file
-            results["chunk_size"] = config.chunk_size
-            results["add_bos"] = config.add_bos
-            results["model_args"] = config.model_args
-            results["tokenizer_args"] = config.tokenizer_args
-            results["requirements"] = config.requirements
-            results["batch_size"] = config.batch_size
-            results["compression_rate"] = results["neg_log_prob_sum"] / results["avg bytes"] * (1 / math.log(2)) * 0.125 * 100
+                results["model_name_or_path"] = config.model_name_or_path
+                results["tokenizer_name"] = config.tokenizer_name
+                results["data_path"] = data_name
+                results["chunk_size"] = config.chunk_size
+                results["add_bos"] = config.add_bos
+                results["model_args"] = config.model_args
+                results["tokenizer_args"] = config.tokenizer_args
+                results["requirements"] = config.requirements
+                results["batch_size"] = config.batch_size
+                results["compression_rate"] = results["neg_log_prob_sum"] / results["avg bytes"] * (1 / math.log(2)) * 0.125 * 100
 
-            self.make_log(results, config.log_path)
+                self.make_log(results, config.log_path)
 
-            print(f"Finished evaluating {config.model_name_or_path} on {data_file}")
-            print(json.dumps(results, indent=4, ensure_ascii=False, default=self.default_serializer))
-            print("-" * 80)
+                print(f"Finished evaluating {config.model_name_or_path} on {data_name}")
+                print(json.dumps(results, indent=4, ensure_ascii=False, default=self.default_serializer))
+                print("-" * 80)
 
         del model
         del tokenizer
