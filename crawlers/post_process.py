@@ -26,9 +26,9 @@ def soft_truncate(text, target_length, search_range):
                 break
 
     if best_pos is not None:
-        return text[:best_pos]
+        return text[:best_pos].strip()
     else:
-        return text[:target_length]
+        return text[:target_length].strip()
 
 
 def read_jsonl(file_path):
