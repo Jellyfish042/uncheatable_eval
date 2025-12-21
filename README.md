@@ -1,6 +1,6 @@
 # Uncheatable Eval
 
-[![DOI](https://zenodo.org/badge/732357528.svg)](https://zenodo.org/doi/10.5281/zenodo.11284692) [![Leaderboard](https://img.shields.io/badge/%F0%9F%A4%97%20demo-Gradio-ff7c00)](https://huggingface.co/spaces/Jellyfish042/UncheatableEval)[![Data](https://img.shields.io/badge/%F0%9F%A4%97%20Data-HuggingFace-yellow)](https://huggingface.co/collections/Jellyfish042/uncheatableeval)
+[![DOI](https://zenodo.org/badge/732357528.svg)](https://zenodo.org/doi/10.5281/zenodo.11284692) [![Leaderboard](https://img.shields.io/badge/%F0%9F%A4%97%20demo-Gradio-ff7c00)](https://huggingface.co/spaces/Jellyfish042/UncheatableEval) [![Data](https://img.shields.io/badge/%F0%9F%A4%97%20Data-HuggingFace-yellow)](https://huggingface.co/collections/Jellyfish042/uncheatableeval)
 
 ## Introduction
 Traditional LLM benchmarks are easily compromised by unintentional or intentional data leakage, making many benchmarks unreliable and unable to truly reflect the capabilities of LLMs.
