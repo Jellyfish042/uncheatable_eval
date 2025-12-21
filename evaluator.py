@@ -27,13 +27,21 @@ class EvaluationConfig:
 
     requirements: list = field(default_factory=list)  # list of packages, will be installed automatically
 
-    add_bos: bool = False  # whether to add bos token to the input sequence
+    ensure_bos_token: bool = True  # whether ensure the bos token is added to the input sequence, this should be True for more fair comparison
     log_path: str = "./logs/"  # path to save the evaluation results
     cache: str = "./models/temp/"  # cache directory for the models
+    enable_chunking: bool = True  # whether to enable chunking
     chunk_size: int = 4000  # input tokens will be split into chunks of this size
     batch_size: int = 1  # batch size for inference
+    track_byte_wise_data: bool = False  # whether to track byte-wise data
 
     def __post_init__(self):
+
+        assert self.batch_size == 1, "Batch size > 1 is buggy and not supported yet"
+        assert self.chunk_size > 2, "Chunk size must be greater than 2"
+        if self.track_byte_wise_data:
+            assert not self.enable_chunking, "Chunking must be disabled to track byte-wise data"
+
         default_model_args = {"device_map": "auto", "trust_remote_code": True}
         self.model_args = {**default_model_args, **self.model_args}
 
@@ -44,6 +52,9 @@ class EvaluationConfig:
             self.original_model_name_or_path = self.model_name_or_path
             if ".pth" in self.model_name_or_path and "rwkv" in self.model_name_or_path.lower() and self.cache:
                 self.model_name_or_path = os.path.join(self.cache, self.model_name_or_path.split("/")[-1])
+
+        if not self.enable_chunking:
+            self.chunk_size = int(1e30)
 
 
 class Evaluator:
@@ -149,7 +160,10 @@ class Evaluator:
     def load_hf_model(self, config: EvaluationConfig):
         from transformers import AutoTokenizer, AutoModelForCausalLM
 
-        hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args)
+        if config.track_byte_wise_data:
+            hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args, use_fast=False)
+        else:
+            hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args)
         hf_model = AutoModelForCausalLM.from_pretrained(config.model_name_or_path, cache_dir=config.cache, **config.model_args).eval()
 
         self.print_model_parameters_in_billions(hf_model)
@@ -209,19 +223,8 @@ class Evaluator:
         return model, tokenizer
 
     @staticmethod
-    def calculate_log_sum(logits, target_token_ids):
-        shifted_logits = logits[:-1, :]
-        shifted_targets = target_token_ids[1:]
-
-        log_probs = F.log_softmax(shifted_logits, dim=-1)
-
-        target_log_probs = -log_probs.gather(1, shifted_targets.unsqueeze(1)).squeeze()
-        # print(target_log_probs)
-
-        log_sum = torch.sum(target_log_probs, dim=-1)
-        # print(perplexity_sum)
-
-        return log_sum.item()
+    def calculate_log_sum(logits, target_token_ids, reduction="none"):
+        return F.cross_entropy(logits[:-1], target_token_ids[1:], reduction=reduction)
 
     @staticmethod
     def count_rwkv_parameters_in_billions(rwkv_model):
@@ -250,40 +253,65 @@ class Evaluator:
         byte_size = len(byte_array)
         return byte_size
 
-    def eval_rwkv(self, model, tokenizer, texts, chunk_size):
+    def eval_rwkv(self, model, tokenizer, texts, chunk_size, ensure_bos_token, track_byte_wise_data):
         rwkv_test_data = []
         rwkv_token_length_list = []
         char_count = []
+
+        if track_byte_wise_data:
+            max_byte_size = max(len(text.encode("utf-8")) for text in texts)
+            byte_wise_loss_sum = [0.0 for _ in range(max_byte_size)]
+            byte_wise_counts = [0 for _ in range(max_byte_size)]
 
         for idx, sample in tqdm(enumerate(texts), total=len(texts)):
 
             char_count.append(len(sample))
 
-            with torch.no_grad():
+            tokenized = tokenizer.encode(sample)
+            if hasattr(tokenized, "ids"):
+                input_seq = tokenized.ids  # RWKV v4pile
+            else:
+                input_seq = tokenized  # RWKV world
 
-                tokenized = tokenizer.encode(sample)
-                if hasattr(tokenized, "ids"):
-                    input_seq = tokenized.ids  # RWKV v4pile
+            input_length = len(input_seq)
+
+            neg_log_prob_temp = 0
+            for begin in range(0, input_length, chunk_size):
+
+                if ensure_bos_token:
+                    input_chunk = [0] + input_seq[begin : begin + chunk_size]
                 else:
-                    input_seq = tokenized  # RWKV world
-
-                input_length = len(input_seq)
-
-                neg_log_prob_temp = 0
-                for begin in range(0, input_length, chunk_size):
                     input_chunk = input_seq[begin : begin + chunk_size]
 
-                    logit = model.forward(input_chunk, None, full_output=True)[0]
+                logit = model.forward(input_chunk, None, full_output=True)[0]
 
-                    if len(input_chunk) == 1:
-                        logit = logit.unsqueeze(0)
+                if len(input_chunk) == 1:
+                    logit = logit.unsqueeze(0)
 
-                    log_sum = self.calculate_log_sum(logit, torch.tensor(input_chunk).cuda())
+                loss = self.calculate_log_sum(logit, torch.tensor(input_chunk).cuda())
 
-                    neg_log_prob_temp += log_sum
+                neg_log_prob_temp += loss.sum().item()
 
-                rwkv_token_length_list.append(input_length)
-                rwkv_test_data.append(neg_log_prob_temp)
+            rwkv_token_length_list.append(input_length)
+            rwkv_test_data.append(neg_log_prob_temp)
+
+            byte_index = 0
+            if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
+                token_bytes = [tokenizer.decodeBytes([token]) for token in input_seq]
+                for l, byte_values in zip(loss.tolist(), token_bytes):
+                    per_byte_loss = l / len(byte_values)
+                    for _ in range(len(byte_values)):
+                        byte_wise_loss_sum[byte_index] += per_byte_loss
+                        byte_wise_counts[byte_index] += 1
+                        byte_index += 1
+
+        avg_byte_wise_loss = []
+        if track_byte_wise_data:
+            for s, c in zip(byte_wise_loss_sum, byte_wise_counts):
+                if c > 0:
+                    avg_byte_wise_loss.append(s / c)
+                else:
+                    break
 
         data_dict = {
             "neg_log_prob_sum": sum(rwkv_test_data) / len(rwkv_test_data),
@@ -294,64 +322,79 @@ class Evaluator:
             "sample_count": len(texts),
         }
 
-        # print(f'log probability sum: {sum(rwkv_test_data) / len(rwkv_test_data):.2f}')
-        # print(f'avg tokens: {sum(rwkv_token_length_list) / len(rwkv_token_length_list):.0f}')
+        if track_byte_wise_data:
+            data_dict["byte_wise_loss"] = avg_byte_wise_loss
+            data_dict["byte_wise_counts"] = byte_wise_counts
+            factor = (1.0 / math.log(2.0)) * 0.125 * 100.0
+            data_dict["byte_wise_compression_rate"] = [loss_val * factor for loss_val in avg_byte_wise_loss]
 
         return data_dict
 
-    def eval_hf_model(self, model, tokenizer, texts, chunk_size, add_bos):
+    @torch.no_grad()
+    def eval_hf_model(self, model, tokenizer, texts, chunk_size, ensure_bos_token, track_byte_wise_data):
         data = []
         token_length_list = []
         char_count = []
 
-        if add_bos:
-            bos_token = tokenizer.encode(tokenizer.bos_token)
-            len_bos = len(bos_token)
+        if ensure_bos_token:
+            if tokenizer.bos_token_id is not None:
+                bos_token = tokenizer.bos_token_id
+            elif tokenizer.eos_token_id is not None:
+                bos_token = tokenizer.eos_token_id
+            else:
+                raise ValueError("No bos token or eos token found")
+            bos_tensor = torch.tensor([bos_token], device=model.device)
+            len_bos = bos_tensor.shape[-1]
+
+        if track_byte_wise_data:
+            max_byte_size = max(len(text.encode("utf-8")) for text in texts)
+            byte_wise_loss_sum = [0.0 for _ in range(max_byte_size)]
+            byte_wise_counts = [0 for _ in range(max_byte_size)]
 
         for idx, sample in tqdm(enumerate(texts), total=len(texts), desc="Evaluating"):
 
+            inputs = tokenizer(sample, return_tensors="pt", add_special_tokens=False)
+            inputs = inputs.to(model.device)
+            seq_length = inputs["input_ids"].shape[-1]
+            assert seq_length > 1, f"Sequence {sample} is too short"
+
+            neg_log_prob_temp = 0
+            for begin in range(0, seq_length, chunk_size):
+                input_chunk = inputs["input_ids"][:, begin : begin + chunk_size]
+                if ensure_bos_token:
+                    """
+                    huggingface models have all kinds of different ways to handle the bos token,
+                    you never know what the tokenizer will do, so we just check if the first token is the bos token.
+                    """
+                    if not torch.equal(input_chunk[0, :len_bos], bos_tensor):
+                        input_chunk = torch.cat([bos_tensor.unsqueeze(0), input_chunk], dim=-1)
+                logit = model.forward(input_ids=input_chunk).logits[0, :, :]
+                loss = self.calculate_log_sum(logit, input_chunk.squeeze(0))
+                loss_sum = loss.sum().item()
+                neg_log_prob_temp += loss_sum
+
+            byte_index = 0
+            if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
+                token_strings = tokenizer.convert_ids_to_tokens(inputs["input_ids"].squeeze(0).tolist())
+                for l, token_str in zip(loss, token_strings):
+                    byte_values = [tokenizer.byte_decoder[c] for c in token_str]
+                    per_byte_loss = l.item() / len(byte_values)
+                    for _ in range(len(byte_values)):
+                        byte_wise_loss_sum[byte_index] += per_byte_loss
+                        byte_wise_counts[byte_index] += 1
+                        byte_index += 1
+
+            token_length_list.append(seq_length)
+            data.append(neg_log_prob_temp)
             char_count.append(len(sample))
 
-            with torch.no_grad():
-
-                inputs = tokenizer(sample, return_tensors="pt")
-                inputs = inputs.to(model.device)
-
-                seq_length = inputs["input_ids"].shape[-1]
-
-                neg_log_prob_temp = 0
-                if add_bos:
-                    for begin in range(0, seq_length, chunk_size - len_bos):
-                        input_chunk = inputs["input_ids"][:, begin : begin + chunk_size - len_bos]
-
-                        input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk], dim=-1)
-
-                        logit = model.forward(input_ids=input_chunk).logits[0, :, :]
-                        # print(logit.shape, input_chunk.squeeze(0).shape)
-                        # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
-
-                        log_sum = self.calculate_log_sum(logit[len_bos:, :], input_chunk.squeeze(0)[len_bos:])  # exclude bos
-                        neg_log_prob_temp += log_sum
+        avg_byte_wise_loss = []
+        if track_byte_wise_data:
+            for s, c in zip(byte_wise_loss_sum, byte_wise_counts):
+                if c > 0:
+                    avg_byte_wise_loss.append(s / c)
                 else:
-                    for begin in range(0, seq_length, chunk_size):
-                        input_chunk = inputs["input_ids"][:, begin : begin + chunk_size]
-
-                        logit = model.forward(input_ids=input_chunk).logits[0, :, :]
-
-                        log_sum = self.calculate_log_sum(logit, input_chunk.squeeze(0))
-                        neg_log_prob_temp += log_sum
-
-                # neg_log_prob_temp = 0
-                # for begin in range(0, seq_length, chunk_size):
-                #     input_chunk = inputs['input_ids'][:, begin: begin + chunk_size]
-                #
-                #     logit = model.forward(input_ids=input_chunk).logits[0, :, :]
-                #
-                #     log_sum = self.calculate_log_sum(logit, input_chunk.squeeze(0))
-                #     neg_log_prob_temp += log_sum
-
-                token_length_list.append(seq_length)
-                data.append(neg_log_prob_temp)
+                    break
 
         data_dict = {
             "neg_log_prob_sum": sum(data) / len(data),
@@ -362,95 +405,11 @@ class Evaluator:
             "sample_count": len(texts),
         }
 
-        # print(f'log probability sum: {sum(data) / len(data):.2f}')
-        # print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
-
-        return data_dict
-
-    @torch.no_grad()
-    def eval_hf_model_batch(self, model, tokenizer, texts, chunk_size, add_bos, batch_size):
-
-        if add_bos:
-            bos_token = tokenizer.encode(tokenizer.bos_token)
-            len_bos = len(bos_token)
-
-        if tokenizer.pad_token_id is not None:
-            pad_token_id = tokenizer.pad_token_id
-        elif tokenizer.eos_token_id is not None:
-            pad_token_id = tokenizer.eos_token_id
-        else:
-            raise ValueError("Tokenizer does not have a pad_token_id or eos_token_id for padding.")
-
-        data = []
-        token_length_list = []
-        all_input_chunks = []
-        for idx, sample in tqdm(enumerate(texts), total=len(texts), desc="Tokenizing"):
-
-            inputs = tokenizer(sample, return_tensors="pt")
-            inputs = inputs.to(model.device)
-
-            seq_length = inputs["input_ids"].shape[-1]
-
-            if add_bos:
-                for begin in range(0, seq_length, chunk_size - len_bos):
-                    input_chunk = inputs["input_ids"][:, begin : begin + chunk_size - len_bos]
-
-                    token_length_list.append(input_chunk.shape[-1])
-
-                    input_chunk = torch.cat([torch.tensor([bos_token], device=input_chunk.device), input_chunk], dim=-1)
-                    all_input_chunks.append(input_chunk)
-
-                    # print(logit.shape, input_chunk.squeeze(0).shape)
-                    # print(logit[len_bos:, :].shape, input_chunk.squeeze(0)[len_bos:].shape)
-            else:
-                for begin in range(0, seq_length, chunk_size):
-                    input_chunk = inputs["input_ids"][:, begin : begin + chunk_size]
-
-                    token_length_list.append(input_chunk.shape[-1])
-                    all_input_chunks.append(input_chunk)
-
-        all_input_chunks.sort(key=lambda x: x.shape[1], reverse=True)
-
-        # Process the input chunks in batches
-        for i in tqdm(range(0, len(all_input_chunks), batch_size), total=math.ceil(len(all_input_chunks) / batch_size), desc="Inference"):
-
-            origin_batch = all_input_chunks[i : i + batch_size]
-            max_length = max([chunk.shape[1] for chunk in origin_batch])
-
-            padded_batch = torch.cat([F.pad(chunk, (max_length - chunk.shape[1], 0), "constant", pad_token_id) for chunk in origin_batch])
-            attention_mask = padded_batch != pad_token_id
-
-            outputs = model(input_ids=padded_batch, attention_mask=attention_mask)
-            logits = outputs.logits
-
-            # Calculate the negative log probability for each chunk
-            for j in range(padded_batch.shape[0]):
-                input_ids = padded_batch[j]
-                logit = logits[j]
-
-                mask = (padded_batch != pad_token_id).int()
-                if add_bos:
-                    # Find the first occurrence of a non-pad token which would be the BOS token
-                    first_non_pad = (input_ids != pad_token_id).nonzero(as_tuple=True)[0][0]
-                    mask[first_non_pad : first_non_pad + len_bos] = 0  # Set BOS token positions to False
-
-                masked_logits = logit[mask.bool()]  # Convert mask back to boolean for indexing
-                masked_input_ids = input_ids[mask.bool()]  # Convert mask back to boolean for indexing
-
-                neg_log_prob = self.calculate_log_sum(masked_logits, masked_input_ids)
-                data.append(neg_log_prob)
-
-        data_dict = {
-            "neg_log_prob_sum": sum(data) / len(texts),
-            "avg tokens": sum(token_length_list) / len(texts),
-            "avg character count": sum([len(text) for text in texts]) / len(texts),
-            "parameters count": self.count_model_parameters_in_billions(model),
-            "avg bytes": sum([self.get_string_byte_size(text) for text in texts]) / len(texts),
-            "sample_count": len(texts),
-        }
-
-        # print(f'log probability sum: {sum(data) / len(data):.2f}')
-        # print(f'avg tokens: {sum(token_length_list) / len(token_length_list):.0f}')
+        if track_byte_wise_data:
+            data_dict["byte_wise_loss"] = avg_byte_wise_loss
+            data_dict["byte_wise_counts"] = byte_wise_counts
+            factor = (1.0 / math.log(2.0)) * 0.125 * 100.0
+            data_dict["byte_wise_compression_rate"] = [loss_val * factor for loss_val in avg_byte_wise_loss]
 
         return data_dict
 
@@ -543,24 +502,25 @@ class Evaluator:
                 # eval
                 if config.model_type in ["hf", "mamba"]:
                     if config.batch_size > 1:
-                        results = self.eval_hf_model_batch(
-                            model=model,
-                            tokenizer=tokenizer,
-                            texts=texts,
-                            chunk_size=config.chunk_size,
-                            add_bos=config.add_bos,
-                            batch_size=config.batch_size,
-                        )
+                        raise NotImplementedError
                     else:
                         results = self.eval_hf_model(
                             model=model,
                             tokenizer=tokenizer,
                             texts=texts,
                             chunk_size=config.chunk_size,
-                            add_bos=config.add_bos,
+                            ensure_bos_token=config.ensure_bos_token,
+                            track_byte_wise_data=config.track_byte_wise_data,
                         )
                 elif config.model_type in ["rwkv", "rwkv7"]:
-                    results = self.eval_rwkv(model=model, tokenizer=tokenizer, texts=texts, chunk_size=config.chunk_size)
+                    results = self.eval_rwkv(
+                        model=model,
+                        tokenizer=tokenizer,
+                        texts=texts,
+                        chunk_size=config.chunk_size,
+                        ensure_bos_token=config.ensure_bos_token,
+                        track_byte_wise_data=config.track_byte_wise_data,
+                    )
                 else:
                     raise NotImplementedError
 
@@ -568,12 +528,13 @@ class Evaluator:
                 results["tokenizer_name"] = config.tokenizer_name
                 results["data_path"] = data_name
                 results["chunk_size"] = config.chunk_size
-                results["add_bos"] = config.add_bos
+                results["ensure_bos_token"] = config.ensure_bos_token
                 results["model_args"] = config.model_args
                 results["tokenizer_args"] = config.tokenizer_args
                 results["requirements"] = config.requirements
                 results["batch_size"] = config.batch_size
                 results["compression_rate"] = results["neg_log_prob_sum"] / results["avg bytes"] * (1 / math.log(2)) * 0.125 * 100
+                results["track_byte_wise_data"] = config.track_byte_wise_data
 
                 self.make_log(results, config.log_path)
 
