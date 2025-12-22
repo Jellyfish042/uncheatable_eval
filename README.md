@@ -31,6 +31,7 @@ config = EvaluationConfig(
     tokenizer_name="stabilityai/stablelm-2-1_6b",
     # 'hf' for huggingface model, 'rwkv' for rwkv model, 'mamba' for mamba model
     model_type="hf",
+    # the script will automatically download the datasets from the Hugging Face Hub
     # more datasets can be found in https://huggingface.co/collections/Jellyfish042/uncheatableeval
     data=["Jellyfish042/UncheatableEval-2025-12"],
 )
