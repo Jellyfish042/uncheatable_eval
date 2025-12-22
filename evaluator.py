@@ -534,12 +534,15 @@ class Evaluator:
                 results["requirements"] = config.requirements
                 results["batch_size"] = config.batch_size
                 results["compression_rate"] = results["neg_log_prob_sum"] / results["avg bytes"] * (1 / math.log(2)) * 0.125 * 100
+                results["enable_chunking"] = config.enable_chunking
                 results["track_byte_wise_data"] = config.track_byte_wise_data
 
                 self.make_log(results, config.log_path)
 
                 print(f"Finished evaluating {config.model_name_or_path} on {data_name}")
-                print(json.dumps(results, indent=4, ensure_ascii=False, default=self.default_serializer))
+                skip_keys = {"byte_wise_loss", "byte_wise_counts", "byte_wise_compression_rate"}
+                filtered_results = {k: v for k, v in results.items() if k not in skip_keys}
+                print(json.dumps(filtered_results, indent=4, ensure_ascii=False, default=self.default_serializer))
                 print("-" * 80)
 
         del model

@@ -13,53 +13,118 @@ Uncheatable Eval assesses the language modeling capabilities of LLMs on new data
 
 Specifically, we calculate the sum of negative log probabilities of the models on these texts. In other words, models that are more likely to generate these texts are considered better.
 
-*Note* : Uncheatable Eval only tests base models.
+*Note*: Uncheatable Eval is designed to evaluate **base models** only.
 
 # Guide
 
-**Uncheatable Eval** now supports the evaluation of typical **Hugging Face AutoModelForCausalLM** models and **RWKV** models. By following these three simple steps, you can easily obtain evaluation results:
+**Uncheatable Eval** now supports the evaluation of typical **Hugging Face AutoModelForCausalLM** models, **RWKV** models and **Mamba** models.
 
-## Step 1: Prepare Datasets
+## Evaluation
 
-2 options for preparing your dataset:
+You can modify the `EvaluationConfig` in `eval_single.py` to evaluate a single model. For example:
 
-- Use the datasets provided in the `data` directory.
-- Open `multi_site_crawler.sh`, modify `START_DATE`, `END_DATE`, and `GITHUB_ACCESS_TOKEN`, then run the script to fetch real-time data.
-
-*Note* : 
-
-AO3 has a strict rate limit (20 requests per minute), you can implement your own proxy strategy in proxy.py and then set max_worker to a higher value to avoid rate limiting, or wait for a longer time.
-
-Wikipedia crawler does not support fetching data older than one month.
-
-## Step 2: Evaluate Models
-
-### Evaluating a Single Model
-
-- Uncheatable Eval now supports the Hugging Face `AutoModelForCausalLM` and RWKV models (in `.pth` format). Change the configuration in `eval_single.py` to specify the model, model type, tokenizer, and data to be evaluated.
-for example:
 ```python
 config = EvaluationConfig(
     # huggingface model name or local model path
-    model_name_or_path='stabilityai/stablelm-2-1_6b',
+    model_name_or_path="stabilityai/stablelm-2-1_6b",
     # huggingface tokenizer name or local tokenizer path
-    tokenizer_name='stabilityai/stablelm-2-1_6b',
-    # 'hf' for huggingface model, 'rwkv' for rwkv model
-    model_type='hf',
-    # list of data files to evaluate
-    data=['data/ao3_english_20240501to20240515.json']
+    tokenizer_name="stabilityai/stablelm-2-1_6b",
+    # 'hf' for huggingface model, 'rwkv' for rwkv model, 'mamba' for mamba model
+    model_type="hf",
+    # more datasets can be found in https://huggingface.co/collections/Jellyfish042/uncheatableeval
+    data=["Jellyfish042/UncheatableEval-2025-12"],
 )
-# more optional configurations can be found in evaluator.py
 ```
-then run `eval_single.py` to evaluate the model.
 
-### Batch Evaluation of Multiple Models
+## Visualization
 
-- You can also use `eval_multi.py` to batch evaluate multiple models on multiple datasets. Simply add the configurations in config_list and run the script.
+You can run `show_results.ipynb` to visualize the evaluation results.
 
-## Step 3: Parse and Visualize Results
+## Data Collection
 
-- Run `show_results.ipynb` to parse and visualize the evaluation results.
+If you wish to collect your own evaluation data, this project provides several data crawlers based on the Scrapy framework, located in the `crawlers` directory. Detailed usage instructions are provided below.
+To start, navigate to the `crawlers` directory:
+
+```bash
+cd crawlers
+```
+
+### GitHub Crawler
+
+
+First, you need to obtain a GitHub Access Token. Then, run the following command:
+
+```bash
+scrapy crawl github -a access_token="<YOUR_ACCESS_TOKEN>" -a start_date="<START_DATE>" -a end_date="<END_DATE>" -a language="<LANGUAGE>"
+
+```
+
+**Example:**
+
+```bash
+scrapy crawl github -a access_token="xxxxxx" -a start_date="2025-12-01" -a end_date="2025-12-15" -a language="py"
+
+```
+
+**Supported values for `language`:**
+
+* `py` (Python)
+* `cpp` (C++)
+* `js` (JavaScript)
+* `ts` (TypeScript)
+* `md` (Markdown)
+
+### AO3 Crawler
+
+Run the following command:
+
+```bash
+scrapy crawl ao3 -a start_date="2025-12-01" -a end_date="2025-12-15" -a language="english"
+
+```
+
+**Supported values for `language`:**
+
+* `english` (English)
+* `chinese` (Chinese)
+
+### BBC News Crawler
+
+Run the following command:
+
+```bash
+scrapy crawl bbc -a start_date="2025-12-01" -a end_date="2025-12-15"
+
+```
+
+### arXiv Crawler
+
+Run the following command:
+
+```bash
+scrapy crawl arxiv -a start_date="2025-12-01" -a end_date="2025-12-15" -a classification="computer_science"
+
+```
+
+**Supported values for `classification`:**
+
+* `computer_science` (Computer Science)
+* `physics` (Physics)
+* `mathematics` (Mathematics)
+
+### Wikipedia Crawler
+
+Run the following command:
+
+```bash
+scrapy crawl wikipedia -a start_date="2025-12-01" -a end_date="2025-12-15"
+
+```
+
+> **Note:** For the AO3, arXiv, BBC News, and Wikipedia crawlers, you may need to configure the `ROTATING_PROXY_LIST` in `crawler/settings.py` to use proxies for reliable data scraping.
+
+---
+
 
 ## Q&A
 ### Why Calculate the Sum of Negative Log Probabilities?
@@ -69,16 +134,6 @@ Second, from the perspective of "compression is intelligence," a good way to tes
 Therefore, the compression rate of a model can be directly calculated through the sum of negative log probabilities, and the method for this has been provided in `show_results_v2.ipynb`.
 ### Can Models Using Different Tokenizers Be Directly Compared?
 Yes. When calculating the sum of negative log probabilities, we essentially treat the model + tokenizer as a single entity or system. As long as this system has a high probability of generating real text, we consider it better. From the perspective of compression, you can choose any tokenizer. From the compression rate perspective, we don't care; we only care about whether your system can compress the text more effectively.
-
-### Is It Really Uncheatable? Can't I train my model on a large number of arXiv papers to improve its test performance on arXiv papers?
-Uncheatable Eval's data sources currently include new arXiv papers, new GitHub projects, BBC news, AO3 fanfictions, and new Wikipedia entries, with more sources to be added in the future. If you genuinely achieve excellent results across these data by training extensively on these sources, I would consider you to have developed a genuinely good language model rather than cheating.
-
-From my test results, accurately modeling these data is very challenging. I believe Uncheatable Eval more accurately reflects the value of every bit of data and computing you invest compared to other benchmarks. Models trained with more data and computing are almost always better, and there are no shortcuts. This is a key strength of Uncheatable Eval.
-
-### Is This Too "Random"? Why Consider Random Texts from the Internet as Ground Truth?
-This is why we choose rigorous and verified texts such as arXiv papers and news reports, which typically have better quality. Additionally, a round of Uncheatable Eval evaluates a model over millions of tokens, increasing the reliability of the results.
-
-In fact, the model rankings obtained through Uncheatable Eval are very stable. For instance, the model ranked first in January's data is highly likely to remain first in February, March, April, May, and June, indicating that the data obtained through this method is sufficiently representative.
 
 # Results
 
