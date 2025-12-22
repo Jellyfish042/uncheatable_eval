@@ -127,7 +127,7 @@ scrapy crawl wikipedia -a start_date="2025-12-01" -a end_date="2025-12-15"
 
 ```
 
-> **Note:** For the AO3, arXiv, BBC News, and Wikipedia crawlers, you may need to configure the `ROTATING_PROXY_LIST` in `crawler/settings.py` to use proxies for reliable data scraping.
+> **Note:** For the AO3, arXiv, BBC News, and Wikipedia crawlers, you may need to configure the `ROTATING_PROXY_LIST` in `crawler/crawler/settings.py` to use proxies for reliable data scraping.
 
 ---
 
