@@ -37,6 +37,11 @@ config = EvaluationConfig(
 )
 ```
 
+Then:
+```bash
+python eval_single.py
+```
+
 ## Visualization
 
 You can run `show_results.ipynb` to visualize the evaluation results.
