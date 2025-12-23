@@ -340,7 +340,8 @@ class Evaluator:
             if tokenizer.bos_token_id is not None:
                 bos_token = tokenizer.bos_token_id
             elif tokenizer.eos_token_id is not None:
-                bos_token = tokenizer.eos_token_id
+                # bos_token = tokenizer.eos_token_id
+                bos_token = tokenizer.encode("\n")[0]
             else:
                 raise ValueError("No bos token or eos token found")
             bos_tensor = torch.tensor([bos_token], device=model.device)
@@ -536,8 +537,8 @@ class Evaluator:
                 results["requirements"] = config.requirements
                 results["batch_size"] = config.batch_size
                 results["enable_chunking"] = config.enable_chunking
-                results["bpc"] = (results['neg_log_prob_sum'] / results['avg character count']) * (1 / math.log(2))
-                results["bpb"] = (results['neg_log_prob_sum'] / results['avg bytes']) * (1 / math.log(2))
+                results["bpc"] = (results["neg_log_prob_sum"] / results["avg character count"]) * (1 / math.log(2))
+                results["bpb"] = (results["neg_log_prob_sum"] / results["avg bytes"]) * (1 / math.log(2))
                 results["compression_rate"] = results["neg_log_prob_sum"] / results["avg bytes"] * (1 / math.log(2)) * 0.125 * 100
                 results["enable_chunking"] = config.enable_chunking
                 results["track_byte_wise_data"] = config.track_byte_wise_data
