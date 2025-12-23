@@ -339,11 +339,8 @@ class Evaluator:
         if ensure_bos_token:
             if tokenizer.bos_token_id is not None:
                 bos_token = tokenizer.bos_token_id
-            elif tokenizer.eos_token_id is not None:
-                # bos_token = tokenizer.eos_token_id
-                bos_token = tokenizer.encode("\n")[0]
             else:
-                raise ValueError("No bos token or eos token found")
+                bos_token = tokenizer.encode("\n")[0]
             bos_tensor = torch.tensor([bos_token], device=model.device)
             len_bos = bos_tensor.shape[-1]
 
