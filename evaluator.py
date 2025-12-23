@@ -422,8 +422,10 @@ class Evaluator:
                 print(f"Error creating directory: {e}")
                 return
 
+        model_name = data_dict["model_name_or_path"].split("/")[-1].replace(".pth", "")
+        dataset_name = data_dict["data_path"].split("/")[-1]
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        file_name = f"{timestamp}.json"
+        file_name = f"{model_name}-{dataset_name}-{timestamp}.json"
         file_path = os.path.join(folder_path, file_name)
 
         try:
@@ -533,6 +535,9 @@ class Evaluator:
                 results["tokenizer_args"] = config.tokenizer_args
                 results["requirements"] = config.requirements
                 results["batch_size"] = config.batch_size
+                results["enable_chunking"] = config.enable_chunking
+                results["bpc"] = (results['neg_log_prob_sum'] / results['avg character count']) * (1 / math.log(2))
+                results["bpb"] = (results['neg_log_prob_sum'] / results['avg bytes']) * (1 / math.log(2))
                 results["compression_rate"] = results["neg_log_prob_sum"] / results["avg bytes"] * (1 / math.log(2)) * 0.125 * 100
                 results["enable_chunking"] = config.enable_chunking
                 results["track_byte_wise_data"] = config.track_byte_wise_data
