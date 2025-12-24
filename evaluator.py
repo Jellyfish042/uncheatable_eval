@@ -168,11 +168,11 @@ class Evaluator:
     def load_hf_model(self, config: EvaluationConfig):
         from transformers import AutoTokenizer, AutoModelForCausalLM
 
+        hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args)
         # if config.track_byte_wise_data:
         #     hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args, use_fast=False)
         # else:
         #     hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args)
-        hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args)
         hf_model = AutoModelForCausalLM.from_pretrained(config.model_name_or_path, cache_dir=config.cache, **config.model_args).eval()
 
         self.print_model_parameters_in_billions(hf_model)
@@ -306,12 +306,9 @@ class Evaluator:
 
             byte_index = 0
             if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
-                per_token_bytes = get_decoded(tokenizer, sample)
-                all_bytes = [byte for token in per_token_bytes for byte in token]
-                assert all_bytes == list(sample.encode("utf-8")), "All bytes are not the same"
-                assert len(per_token_bytes) == loss.shape[0], "Number of tokens and loss are not the same"
-                for l, byte_values in zip(loss, per_token_bytes):
-                    per_byte_loss = l.item() / len(byte_values)
+                token_bytes = [tokenizer.decodeBytes([token]) for token in input_chunk[1:]]
+                for l, byte_values in zip(loss.tolist(), token_bytes):
+                    per_byte_loss = l / len(byte_values)
                     for _ in range(len(byte_values)):
                         byte_wise_loss_sum[byte_index] += per_byte_loss
                         byte_wise_counts[byte_index] += 1
@@ -385,9 +382,13 @@ class Evaluator:
 
             byte_index = 0
             if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
-                token_strings = tokenizer.convert_ids_to_tokens(input_chunk.squeeze(0).tolist()[1:])
-                for l, token_str in zip(loss, token_strings):
-                    byte_values = [tokenizer.byte_decoder[c] for c in token_str]
+                # token_strings = tokenizer.convert_ids_to_tokens(input_chunk.squeeze(0).tolist()[1:])
+                per_token_bytes = get_decoded(tokenizer, sample)
+                all_bytes = [byte for token in per_token_bytes for byte in token]
+                assert all_bytes == list(sample.encode("utf-8")), "All bytes are not the same"
+                assert len(per_token_bytes) == loss.shape[0], "Number of tokens and loss are not the same"
+                for l, byte_values in zip(loss, per_token_bytes):
+                    # byte_values = [tokenizer.byte_decoder[c] for c in token_str]
                     per_byte_loss = l.item() / len(byte_values)
                     for _ in range(len(byte_values)):
                         byte_wise_loss_sum[byte_index] += per_byte_loss
