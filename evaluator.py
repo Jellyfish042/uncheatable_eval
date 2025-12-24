@@ -373,8 +373,7 @@ class Evaluator:
                     huggingface models have all kinds of different ways to handle the bos token,
                     you never know what the tokenizer will do, so we just check if the first token is the bos token.
                     """
-                    if not torch.equal(input_chunk[0, :len_bos], bos_tensor):
-                        input_chunk = torch.cat([bos_tensor.unsqueeze(0), input_chunk], dim=-1)
+                    input_chunk = torch.cat([bos_tensor.unsqueeze(0), input_chunk], dim=-1)
                 logit = model.forward(input_ids=input_chunk).logits[0, :, :]
                 loss = self.calculate_log_sum(logit, input_chunk.squeeze(0))
                 loss_sum = loss.sum().item()
