@@ -168,10 +168,11 @@ class Evaluator:
     def load_hf_model(self, config: EvaluationConfig):
         from transformers import AutoTokenizer, AutoModelForCausalLM
 
-        if config.track_byte_wise_data:
-            hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args, use_fast=False)
-        else:
-            hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args)
+        # if config.track_byte_wise_data:
+        #     hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args, use_fast=False)
+        # else:
+        #     hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args)
+        hf_tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args)
         hf_model = AutoModelForCausalLM.from_pretrained(config.model_name_or_path, cache_dir=config.cache, **config.model_args).eval()
 
         self.print_model_parameters_in_billions(hf_model)
