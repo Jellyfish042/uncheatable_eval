@@ -297,7 +297,7 @@ class Evaluator:
 
             byte_index = 0
             if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
-                token_bytes = [tokenizer.decodeBytes([token]) for token in input_seq]
+                token_bytes = [tokenizer.decodeBytes([token]) for token in input_chunk[1:]]
                 for l, byte_values in zip(loss.tolist(), token_bytes):
                     per_byte_loss = l / len(byte_values)
                     for _ in range(len(byte_values)):
@@ -373,7 +373,7 @@ class Evaluator:
 
             byte_index = 0
             if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
-                token_strings = tokenizer.convert_ids_to_tokens(inputs["input_ids"].squeeze(0).tolist())
+                token_strings = tokenizer.convert_ids_to_tokens(input_chunk.squeeze(0).tolist()[1:])
                 for l, token_str in zip(loss, token_strings):
                     byte_values = [tokenizer.byte_decoder[c] for c in token_str]
                     per_byte_loss = l.item() / len(byte_values)
