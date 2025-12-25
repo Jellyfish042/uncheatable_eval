@@ -27,12 +27,13 @@ class AO3Spider(scrapy.Spider):
         language_map = {
             "english": "1",
             "chinese": "zh",
+            "nonenglish": "nonenglish",
         }
 
         self.start_date = start_date
         self.end_date = end_date
         self.subtitle = language
-        self.language_id = language_map.get(language, "1")
+        self.language_id = language_map[language]
         self.max_page = int(max_page)
         self.base_url = "https://archiveofourown.gay/works/search"
         self.step_size = 20
@@ -43,14 +44,23 @@ class AO3Spider(scrapy.Spider):
             self.logger.error(date_query)
             return
 
-        self.base_params = {
-            "commit": "Search",
-            "work_search[language_id]": self.language_id,
-            "work_search[revised_at]": date_query,
-            "work_search[single_chapter]": 0,
-            "work_search[sort_column]": "created_at",
-            "work_search[sort_direction]": "desc",
-        }
+        if self.language_id == "nonenglish":
+            self.base_params = {
+                "commit": "Search",
+                "work_search[revised_at]": date_query,
+                "work_search[single_chapter]": 0,
+                "work_search[sort_column]": "created_at",
+                "work_search[sort_direction]": "desc",
+            }
+        else:
+            self.base_params = {
+                "commit": "Search",
+                "work_search[language_id]": self.language_id,
+                "work_search[revised_at]": date_query,
+                "work_search[single_chapter]": 0,
+                "work_search[sort_column]": "created_at",
+                "work_search[sort_direction]": "desc",
+            }
 
         for i in range(1, self.step_size + 1):
             yield self.generate_search_request(page=i)
@@ -59,26 +69,31 @@ class AO3Spider(scrapy.Spider):
         params = self.base_params.copy()
         params["page"] = page
         url = f"{self.base_url}?{urlencode(params)}"
-        # self.logger.info(f"Generating search request for page {page}: {url}")
+        self.logger.info(f"Generating search request for page {page}: {url}")
         return scrapy.Request(url=url, callback=self.parse_search, meta={"page": page})
 
     def parse_search(self, response):
         current_page = response.meta["page"]
 
-        work_links = response.css('ol.work.index.group li.work.blurb.group a[href^="/works/"]::attr(href)').getall()
+        work_blurbs = response.css("li.work.blurb.group")
 
-        if not work_links:
+        if not work_blurbs:
             self.logger.info(f"No works found on page {current_page}. Stop pagination.")
             return
 
-        for work_url in work_links:
-            if "bookmarks" in work_url or "collections" in work_url:
+        for work in work_blurbs:
+            lang_text = work.css("dd.language::text").get()
+            lang = lang_text.strip() if lang_text else "Unknown"
+
+            if self.subtitle == "nonenglish" and lang == "English":
                 continue
-            if "chapters" in work_url:
-                work_url = work_url.split("/chapters")[0]
 
-            full_url = response.urljoin(work_url)
+            work_rel_url = work.css('div.header h4.heading a[href^="/works/"]::attr(href)').get()
 
+            if not work_rel_url or "bookmarks" in work_rel_url or "collections" in work_rel_url:
+                continue
+
+            full_url = response.urljoin(work_rel_url)
             yield scrapy.Request(url=full_url, callback=self.parse_work)
 
         next_target_page = current_page + self.step_size
