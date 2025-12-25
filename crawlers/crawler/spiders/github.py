@@ -17,7 +17,7 @@ class GithubSpider(scrapy.Spider):
             "crawler.pipelines.MinHashLSHDuplicateFilterPipeline": 300,
             "crawler.pipelines.JsonWriterPipeline": 400,
         },
-        "CLOSESPIDER_ITEMCOUNT": 500,
+        "CLOSESPIDER_ITEMCOUNT": 100,
         "LOG_LEVEL": "INFO",
     }
 
@@ -30,6 +30,7 @@ class GithubSpider(scrapy.Spider):
             "js": "JavaScript",
             "ts": "TypeScript",
             "md": None,
+            "other": None,
         }
         subtitle_map = {
             "py": "python",
@@ -37,13 +38,53 @@ class GithubSpider(scrapy.Spider):
             "js": "javascript",
             "ts": "typescript",
             "md": "markdown",
+            "other": "other",
         }
         suffix_map = {
-            "py": ".py",
-            "cpp": ".cpp",
-            "js": ".js",
-            "ts": ".ts",
-            "md": ".md",
+            "py": [".py"],
+            "cpp": [".cpp"],
+            "js": [".js"],
+            "ts": [".ts"],
+            "md": [".md"],
+            "other": [
+                ".c",
+                ".h",
+                ".go",
+                ".cs",
+                ".java",
+                ".tsx",
+                ".rs",
+                ".vue",
+                ".swift",
+                ".el",
+                ".kt",
+                ".kts",
+                ".php",
+                ".html",
+                ".htm",
+                ".sh",
+                ".bash",
+                ".zsh",
+                ".sass",
+                ".scss",
+                ".lua",
+                ".pas",
+                ".pp",
+                ".gd",
+                ".dart",
+                ".zig",
+                ".mk",
+                ".luau",
+                ".vhd",
+                ".vhdl",
+                ".nix",
+                ".cmake",
+                ".ps1",
+                ".css",
+                ".m",
+                ".rkt",
+                ".sol",
+            ],
         }
 
         self.start_date = start_date
@@ -70,6 +111,7 @@ class GithubSpider(scrapy.Spider):
                 query = f"created:{real_start}..{real_end}"
             params = {"q": query, "sort": "stars", "order": "desc", "per_page": 100, "page": 1}
             url = f"https://api.github.com/search/repositories?{urlencode(params)}"
+            self.logger.info(f"URL: {url}")
 
             yield scrapy.Request(url=url, headers=self.headers, callback=self.parse_search, meta={"page": 1, "base_url": url})
 
@@ -86,6 +128,13 @@ class GithubSpider(scrapy.Spider):
             repo_name = repo["name"]
             default_branch = repo["default_branch"]
             push_date = repo["pushed_at"]
+            repo_language = repo["language"]
+
+            if repo_language is None:
+                continue
+
+            if self.subtitle == "other" and repo_language in ["Python", "C++", "JavaScript", "TypeScript"]:
+                continue
 
             tree_url = f"https://api.github.com/repos/{owner}/{repo_name}/git/trees/{default_branch}?recursive=1"
 
@@ -93,7 +142,7 @@ class GithubSpider(scrapy.Spider):
                 url=tree_url,
                 headers=self.headers,
                 callback=self.parse_tree,
-                meta={"repo_url": repo["html_url"], "repo_name": f"{owner}/{repo_name}", "push_date": push_date},
+                meta={"repo_url": repo["html_url"], "repo_name": f"{owner}/{repo_name}", "push_date": push_date, "repo_language": repo_language},
             )
 
         current_page = response.meta["page"]
@@ -109,7 +158,7 @@ class GithubSpider(scrapy.Spider):
         tree = data.get("tree", [])
         repo_sha = data.get("sha", "")
 
-        target_files = [item for item in tree if item["path"].endswith(self.suffix) and item["type"] == "blob"]
+        target_files = [item for item in tree if any(item["path"].endswith(suffix) for suffix in self.suffix) and item["type"] == "blob"]
 
         if target_files:
             selected_file = random.choice(target_files)
@@ -123,7 +172,7 @@ class GithubSpider(scrapy.Spider):
                 url=content_url,
                 headers=self.headers,
                 callback=self.parse_content,
-                meta=response.meta | {"content_permanent_url": content_permanent_url},
+                meta=response.meta | {"content_permanent_url": content_permanent_url, "file_suffix": file_path.split(".")[-1]},
             )
 
     def parse_content(self, response):
@@ -138,7 +187,7 @@ class GithubSpider(scrapy.Spider):
                 item["category"] = f"github_{self.subtitle}"
                 item["date"] = response.meta["push_date"]
                 item["url"] = response.meta["content_permanent_url"]
-                item["metadata"] = {}
+                item["metadata"] = {"repo_language": response.meta["repo_language"], "file_suffix": response.meta["file_suffix"]}
                 yield item
 
             except Exception as e:
