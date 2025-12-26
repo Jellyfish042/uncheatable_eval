@@ -5,6 +5,7 @@ from transformers import AutoTokenizer
 import json
 import os
 import glob
+import argparse
 
 
 def read_jsonl(file_path):
@@ -17,7 +18,7 @@ def read_json(file_path):
         return json.load(file)
 
 
-def find_best_bos_config(model_name_or_path, tokenizer_name_or_path, cache_dir):
+def find_best_bos_config(model_name_or_path, tokenizer_name_or_path, cache_dir, model_type):
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path, cache_dir=cache_dir, trust_remote_code=True)
 
@@ -61,7 +62,7 @@ def find_best_bos_config(model_name_or_path, tokenizer_name_or_path, cache_dir):
             config = EvaluationConfig(
                 model_name_or_path=model_name_or_path,
                 tokenizer_name=tokenizer_name_or_path,
-                model_type="hf",
+                model_type=model_type,
                 data=["support/uncheatable_eval_dev.jsonl"],
                 bos_mode=mode,
                 log_path=temp_dir,
@@ -86,8 +87,12 @@ def find_best_bos_config(model_name_or_path, tokenizer_name_or_path, cache_dir):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Find the best BOS mode configuration for a model")
+    parser.add_argument("--model_name_or_path", type=str, required=True, help="Path or name of the model")
+    parser.add_argument("--tokenizer_name_or_path", type=str, required=True, help="Path or name of the tokenizer")
+    parser.add_argument("--model_type", type=str, default="hf", choices=["hf", "mamba"], help="Type of the model (default: hf)")
+    parser.add_argument("--cache_dir", type=str, default=None, help="Cache directory for models and tokenizers (default: None)")
 
-    model_name_or_path = "HuggingFaceTB/SmolLM2-135M"
-    tokenizer_name_or_path = "HuggingFaceTB/SmolLM2-135M"
-    cache_dir = None
-    find_best_bos_config(model_name_or_path, tokenizer_name_or_path, cache_dir)
+    args = parser.parse_args()
+
+    find_best_bos_config(args.model_name_or_path, args.tokenizer_name_or_path, args.cache_dir, args.model_type)
