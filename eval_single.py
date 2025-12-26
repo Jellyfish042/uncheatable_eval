@@ -2,11 +2,12 @@ from evaluator import EvaluationConfig, Evaluator
 
 # Create an EvaluationConfig instance to evaluate your model, for example:
 config = EvaluationConfig(
-    model_name_or_path="stabilityai/stablelm-2-1_6b",
-    tokenizer_name="stabilityai/stablelm-2-1_6b",
+    model_name_or_path="Qwen/Qwen3-0.6B-Base",
+    tokenizer_name="Qwen/Qwen3-0.6B-Base",
     model_type="hf",
     data=["Jellyfish042/UncheatableEval-2025-12"],
-)
+    bos_mode="add_default_eos",
+),
 
 if __name__ == "__main__":
     evaluator = Evaluator()

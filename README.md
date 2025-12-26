@@ -38,13 +38,13 @@ Modify the `EvaluationConfig` in `eval_single.py` to set up the evaluation:
 ```python
 config = EvaluationConfig(
     # huggingface model name or local model path
-    model_name_or_path="stabilityai/stablelm-2-1_6b",
+    model_name_or_path="Qwen/Qwen3-0.6B-Base",
     # huggingface tokenizer name or local tokenizer path
-    tokenizer_name="stabilityai/stablelm-2-1_6b",
+    tokenizer_name="Qwen/Qwen3-0.6B-Base",
     # 'hf' for huggingface model, 'rwkv' for rwkv model, 'mamba' for mamba model
     model_type="hf",
     # how to handle the bos token, only work for hf models, use bos_mode_finder.py to find the best bos mode unless you know what you are doing
-    bos_mode="add_newline_token",
+    bos_mode="add_default_eos",
     # the script will automatically download the datasets from the Hugging Face Hub
     # more datasets can be found at https://huggingface.co/collections/Jellyfish042/uncheatableeval
     data=["Jellyfish042/UncheatableEval-2025-12"],
