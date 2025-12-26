@@ -149,42 +149,31 @@ Yes. When calculating the sum of negative log probabilities, we essentially trea
 
 ~1.5B models
 
-<img align="center" src="assets/1b_radar_24-05-23.png">
-
----
-
-<img align="center" src="assets/1b_cr_2405.png">
+<img align="center" src="assets/1b5_cr.png">
 
 ---
 
 ~3B models
 
-<img align="center" src="assets/3b_radar_24-05-23.png">
-
-
----
-
-<img align="center" src="assets/3b_cr_2405.png">
+<img align="center" src="assets/3b_cr.png">
 
 ---
 
 ~7B models
 
-<img align="center" src="assets/7b_radar_2405.png">
+<img align="center" src="assets/7b_cr.png">
 
 ---
 
-<img align="center" src="assets/7b_cr_2405.png">
+~14B models
+
+<img align="center" src="assets/7b_cr.png">
 
 ---
 
-Changes in Model Rankings Over Time (Excluding Wikipedia Data)
+Scaling law
 
-<img align="center" src="assets/1b_rank_change_2404to2405.png">
-
----
-
-<img align="center" src="assets/3b_rank_change_2404to2405.png">
+<img align="center" src="assets/scaling_law.png">
 
 ---
 
