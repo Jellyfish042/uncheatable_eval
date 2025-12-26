@@ -5,7 +5,7 @@ from pathlib import Path
 
 def soft_truncate(text, target_length, search_range):
     if len(text) <= target_length:
-        return text
+        return text.strip()
 
     whitespace_chars = set(" \n\r\t\f\v")
     punctuation_chars = set(".,;:!?。、，；：！？")
