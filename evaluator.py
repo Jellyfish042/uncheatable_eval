@@ -193,6 +193,7 @@ class Evaluator:
     def load_rwkv(self, config: EvaluationConfig):
         os.environ["RWKV_JIT_ON"] = "1"
         os.environ["RWKV_CUDA_ON"] = "1"
+        os.environ["RWKV_V7_ON"] = "0"
 
         from rwkv.model import RWKV
         from rwkv.utils import PIPELINE
