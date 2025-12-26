@@ -19,7 +19,7 @@ def read_json(file_path):
 
 def find_best_bos_config(model_name_or_path, tokenizer_name_or_path, cache_dir):
 
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path, cache_dir=cache_dir)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name_or_path, cache_dir=cache_dir, trust_remote_code=True)
 
     print(f"BOS token: {tokenizer.bos_token_id}")
     print(f"EOS token: {tokenizer.eos_token_id}")
