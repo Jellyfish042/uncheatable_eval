@@ -90,7 +90,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Find the best BOS mode configuration for a model")
     parser.add_argument("--model_name_or_path", type=str, required=True, help="Path or name of the model")
     parser.add_argument("--tokenizer_name_or_path", type=str, required=True, help="Path or name of the tokenizer")
-    parser.add_argument("--model_type", type=str, default="hf", choices=["hf", "mamba"], help="Type of the model (default: hf)")
+    parser.add_argument("--model_type", type=str, default="hf", choices=["hf", "mamba", "mistral"], help="Type of the model (default: hf)")
     parser.add_argument("--cache_dir", type=str, default=None, help="Cache directory for models and tokenizers (default: None)")
 
     args = parser.parse_args()

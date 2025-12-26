@@ -14,7 +14,10 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from transformers.models.gpt2.tokenization_gpt2 import bytes_to_unicode
+try:
+    from transformers.models.gpt2.tokenization_gpt2 import bytes_to_unicode
+except ImportError:
+    print("Warning: transformers.models.gpt2.tokenization_gpt2 is not available, tracking byte-wise data is not supported")
 
 
 def get_decoded(tokenizer, text):
@@ -238,6 +241,16 @@ class Evaluator:
         tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_name)
         model = MambaLMHeadModel.from_pretrained(config.model_name_or_path, device="cuda", dtype=torch.float16)
         model.device = torch.device("cuda")
+
+        self.print_model_parameters_in_billions(model)
+
+        return model, tokenizer
+
+    def load_mistral(self, config: EvaluationConfig):
+        from transformers import Mistral3ForConditionalGeneration, MistralCommonBackend
+
+        model = Mistral3ForConditionalGeneration.from_pretrained(config.model_name_or_path, cache_dir=config.cache, **config.model_args).eval()
+        tokenizer = MistralCommonBackend.from_pretrained(config.tokenizer_name, cache_dir=config.cache, **config.tokenizer_args)
 
         self.print_model_parameters_in_billions(model)
 
@@ -503,6 +516,8 @@ class Evaluator:
             model, tokenizer = self.load_rwkv7(config)
         elif config.model_type == "mamba":
             model, tokenizer = self.load_mamba(config)
+        elif config.model_type == "mistral":
+            model, tokenizer = self.load_mistral(config)
         else:
             raise NotImplementedError
 
@@ -519,7 +534,7 @@ class Evaluator:
                 print(f"Evaluating {config.model_name_or_path} on {data_name}")
 
                 # eval
-                if config.model_type in ["hf", "mamba"]:
+                if config.model_type in ["hf", "mamba", "mistral"]:
                     if config.batch_size > 1:
                         raise NotImplementedError
                     else:

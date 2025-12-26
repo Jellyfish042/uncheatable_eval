@@ -247,7 +247,7 @@ config_list = [
     #     track_byte_wise_data=True,
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="moonshotai/Kimi-Linear-48B-A3B-Base",  # TODO: add bos_mode
+    #     model_name_or_path="moonshotai/Kimi-Linear-48B-A3B-Base",
     #     tokenizer_name="moonshotai/Kimi-Linear-48B-A3B-Base",
     #     model_type="hf",
     #     data=data_list,
@@ -429,6 +429,15 @@ config_list = [
     # ),
     ##### 3B models #####
     # EvaluationConfig(
+    #     model_name_or_path="mistralai/Ministral-3-3B-Base-2512",
+    #     tokenizer_name="mistralai/Ministral-3-3B-Base-2512",
+    #     model_type="mistral",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
+    # ),
+    # EvaluationConfig(
     #     model_name_or_path="Nanbeige/Nanbeige4-3B-Base",
     #     tokenizer_name="Nanbeige/Nanbeige4-3B-Base",
     #     model_type="hf",
@@ -534,7 +543,7 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="RWKV-x060-World-3B-v2.1-20240417-ctx4096",
+    #     model_name_or_path="RWKV-x060-World-3B-v2.1-20240417-ctx4096.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv",
     #     data=data_list,
@@ -572,6 +581,15 @@ config_list = [
     #     model_args={"torch_dtype": torch.bfloat16},
     # ),
     ##### 7B models #####
+    # EvaluationConfig(
+    #     model_name_or_path="mistralai/Ministral-3-8B-Base-2512",
+    #     tokenizer_name="mistralai/Ministral-3-8B-Base-2512",
+    #     model_type="mistral",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
+    # ),
     # EvaluationConfig(
     #     model_name_or_path="Qwen/Qwen3-8B-Base",
     #     tokenizer_name="Qwen/Qwen3-8B-Base",
@@ -702,6 +720,15 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     ##### 12B models #####
+    # EvaluationConfig(
+    #     model_name_or_path="mistralai/Ministral-3-14B-Base-2512",
+    #     tokenizer_name="mistralai/Ministral-3-14B-Base-2512",
+    #     model_type="mistral",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
+    # ),
     # EvaluationConfig(
     #     model_name_or_path="rwkv7-g0b-13.3b-20251130-ctx8192.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
