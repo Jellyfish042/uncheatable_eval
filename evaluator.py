@@ -27,12 +27,14 @@ class EvaluationConfig:
 
     requirements: list = field(default_factory=list)  # list of packages, will be installed automatically
 
-    ensure_bos_token: bool = True  # whether ensure the bos token is added to the input sequence, this should be True for more fair comparison
+    bos_mode: str = (
+        "add_default_bos"  # how to handle the bos token, only work for hf models, use bos_mode_finder.py to find the best bos mode unless you know what you are doing
+    )
     log_path: str = "./logs/"  # path to save the evaluation results
-    cache: str = "./models/temp/"  # cache directory for the models
+    cache: str = None  # cache directory for the models
     enable_chunking: bool = True  # whether to enable chunking
     chunk_size: int = 4000  # input tokens will be split into chunks of this size
-    batch_size: int = 1  # batch size for inference
+    batch_size: int = 1  # batch size for inference, batch size > 1 is buggy and not supported yet
     track_byte_wise_data: bool = False  # whether to track byte-wise data
 
     def __post_init__(self):
@@ -41,6 +43,15 @@ class EvaluationConfig:
         assert self.chunk_size > 2, "Chunk size must be greater than 2"
         if self.track_byte_wise_data:
             assert not self.enable_chunking, "Chunking must be disabled to track byte-wise data"
+
+        assert self.bos_mode in [
+            "add_default_bos",
+            "add_default_eos",
+            "add_newline_token",
+            "replace_with_bos",
+            "replace_with_eos",
+            "replace_with_newline_token",
+        ], "Invalid bos mode"
 
         default_model_args = {"device_map": "auto", "trust_remote_code": True}
         self.model_args = {**default_model_args, **self.model_args}
@@ -253,7 +264,7 @@ class Evaluator:
         byte_size = len(byte_array)
         return byte_size
 
-    def eval_rwkv(self, model, tokenizer, texts, chunk_size, ensure_bos_token, track_byte_wise_data):
+    def eval_rwkv(self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data):
         rwkv_test_data = []
         rwkv_token_length_list = []
         char_count = []
@@ -278,10 +289,7 @@ class Evaluator:
             neg_log_prob_temp = 0
             for begin in range(0, input_length, chunk_size):
 
-                if ensure_bos_token:
-                    input_chunk = [0] + input_seq[begin : begin + chunk_size]
-                else:
-                    input_chunk = input_seq[begin : begin + chunk_size]
+                input_chunk = [0] + input_seq[begin : begin + chunk_size]
 
                 logit = model.forward(input_chunk, None, full_output=True)[0]
 
@@ -331,18 +339,18 @@ class Evaluator:
         return data_dict
 
     @torch.no_grad()
-    def eval_hf_model(self, model, tokenizer, texts, chunk_size, ensure_bos_token, track_byte_wise_data):
+    def eval_hf_model(self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data):
         data = []
         token_length_list = []
         char_count = []
 
-        if ensure_bos_token:
-            if tokenizer.bos_token_id is not None:
-                bos_token = tokenizer.bos_token_id
-            else:
-                bos_token = tokenizer.encode("\n")[0]
-            bos_tensor = torch.tensor([bos_token], device=model.device)
-            len_bos = bos_tensor.shape[-1]
+        if bos_mode in ["add_default_bos", "replace_with_bos"]:
+            bos_token = tokenizer.bos_token_id
+        elif bos_mode in ["add_default_eos", "replace_with_eos"]:
+            bos_token = tokenizer.eos_token_id
+        elif bos_mode in ["add_newline_token", "replace_with_newline_token"]:
+            bos_token = tokenizer.encode("\n")[0]
+        bos_tensor = torch.tensor([bos_token], device=model.device).unsqueeze(0)
 
         if track_byte_wise_data:
             max_byte_size = max(len(text.encode("utf-8")) for text in texts)
@@ -359,13 +367,10 @@ class Evaluator:
             neg_log_prob_temp = 0
             for begin in range(0, seq_length, chunk_size):
                 input_chunk = inputs["input_ids"][:, begin : begin + chunk_size]
-                if ensure_bos_token:
-                    """
-                    huggingface models have all kinds of different ways to handle the bos token,
-                    you never know what the tokenizer will do, so we just check if the first token is the bos token.
-                    """
-                    if not torch.equal(input_chunk[0, :len_bos], bos_tensor):
-                        input_chunk = torch.cat([bos_tensor.unsqueeze(0), input_chunk], dim=-1)
+                if bos_mode in ["add_default_bos", "add_default_eos", "add_newline_token"]:
+                    input_chunk = torch.cat([bos_tensor, input_chunk], dim=-1)
+                if bos_mode in ["replace_with_bos", "replace_with_eos", "replace_with_newline_token"]:
+                    input_chunk[0, 0] = bos_token
                 logit = model.forward(input_ids=input_chunk).logits[0, :, :]
                 loss = self.calculate_log_sum(logit, input_chunk.squeeze(0))
                 loss_sum = loss.sum().item()
@@ -509,7 +514,7 @@ class Evaluator:
                             tokenizer=tokenizer,
                             texts=texts,
                             chunk_size=config.chunk_size,
-                            ensure_bos_token=config.ensure_bos_token,
+                            bos_mode=config.bos_mode,
                             track_byte_wise_data=config.track_byte_wise_data,
                         )
                 elif config.model_type in ["rwkv", "rwkv7"]:
@@ -518,7 +523,7 @@ class Evaluator:
                         tokenizer=tokenizer,
                         texts=texts,
                         chunk_size=config.chunk_size,
-                        ensure_bos_token=config.ensure_bos_token,
+                        bos_mode=config.bos_mode,
                         track_byte_wise_data=config.track_byte_wise_data,
                     )
                 else:
@@ -528,7 +533,7 @@ class Evaluator:
                 results["tokenizer_name"] = config.tokenizer_name
                 results["data_path"] = data_name
                 results["chunk_size"] = config.chunk_size
-                results["ensure_bos_token"] = config.ensure_bos_token
+                results["bos_mode"] = config.bos_mode
                 results["model_args"] = config.model_args
                 results["tokenizer_args"] = config.tokenizer_args
                 results["requirements"] = config.requirements
