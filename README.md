@@ -21,12 +21,19 @@ Specifically, we calculate the sum of negative log probabilities of the models o
 
 ## Evaluation
 
-First, you need to determine which `bos_mode` is most suitable for your model. If you are not sure, you can use `bos_mode_finder.py` to find the optimal `bos_mode` for your (huggingface) model.
+Determine the optimal `bos_mode` for your model first. Use `bos_mode_finder.py` to automatically detect the best setting for Hugging Face `AutoModelForCausalLM` models unless you know what you are doing.
+
 ```bash
 python bos_mode_finder.py --model_name_or_path="stabilityai/stablelm-2-1_6b" --tokenizer_name="stabilityai/stablelm-2-1_6b"
 ```
 
-You can modify the `EvaluationConfig` in `eval_single.py` to evaluate a single model. For example:
+Tips:
+
+- Do not assume that using the official tokenizer's bos_token is always correct.
+
+- Refer to `eval_multi.py` for configuration examples of other models.
+
+Modify the `EvaluationConfig` in `eval_single.py` to set up the evaluation:
 
 ```python
 config = EvaluationConfig(
@@ -39,24 +46,23 @@ config = EvaluationConfig(
     # how to handle the bos token, only work for hf models, use bos_mode_finder.py to find the best bos mode unless you know what you are doing
     bos_mode="add_newline_token",
     # the script will automatically download the datasets from the Hugging Face Hub
-    # more datasets can be found in https://huggingface.co/collections/Jellyfish042/uncheatableeval
+    # more datasets can be found at https://huggingface.co/collections/Jellyfish042/uncheatableeval
     data=["Jellyfish042/UncheatableEval-2025-12"],
 )
 ```
 
-Then:
+Start the evaluation:
 ```bash
 python eval_single.py
 ```
 
 ## Visualization
 
-You can run `show_results.ipynb` to visualize the evaluation results.
+Run `show_results.ipynb` to visualize the evaluation results.
 
 ## Data Collection
 
-If you wish to collect your own evaluation data, this project provides several data crawlers based on the Scrapy framework, located in the `crawlers` directory. Detailed usage instructions are provided below.
-To start, navigate to the `crawlers` directory:
+This project provides Scrapy-based crawlers to collect custom evaluation data. Navigate to the `crawler` directory to get started:
 
 ```bash
 cd crawlers
@@ -64,8 +70,7 @@ cd crawlers
 
 ### GitHub Crawler
 
-
-First, you need to obtain a GitHub Access Token. Then, run the following command:
+**Prerequisite:** A GitHub Access Token is required.
 
 ```bash
 scrapy crawl github -a access_token="<YOUR_ACCESS_TOKEN>" -a start_date="<START_DATE>" -a end_date="<END_DATE>" -a language="<LANGUAGE>"
@@ -89,8 +94,6 @@ scrapy crawl github -a access_token="xxxxxx" -a start_date="2025-12-01" -a end_d
 
 ### AO3 Crawler
 
-Run the following command:
-
 ```bash
 scrapy crawl ao3 -a start_date="2025-12-01" -a end_date="2025-12-15" -a language="english"
 
@@ -103,16 +106,12 @@ scrapy crawl ao3 -a start_date="2025-12-01" -a end_date="2025-12-15" -a language
 
 ### BBC News Crawler
 
-Run the following command:
-
 ```bash
 scrapy crawl bbc -a start_date="2025-12-01" -a end_date="2025-12-15"
 
 ```
 
 ### arXiv Crawler
-
-Run the following command:
 
 ```bash
 scrapy crawl arxiv -a start_date="2025-12-01" -a end_date="2025-12-15" -a classification="computer_science"
@@ -126,8 +125,6 @@ scrapy crawl arxiv -a start_date="2025-12-01" -a end_date="2025-12-15" -a classi
 * `mathematics` (Mathematics)
 
 ### Wikipedia Crawler
-
-Run the following command:
 
 ```bash
 scrapy crawl wikipedia -a start_date="2025-12-01" -a end_date="2025-12-15"
