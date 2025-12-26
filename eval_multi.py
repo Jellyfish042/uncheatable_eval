@@ -4,7 +4,7 @@ import torch
 import gc
 
 data_list = [
-    "Jellyfish042/UncheatableEval-2025-12-Long",
+    "Jellyfish042/UncheatableEval-2025-12",
 ]
 
 config_list = [
