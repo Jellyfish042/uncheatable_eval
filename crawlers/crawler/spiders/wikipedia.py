@@ -80,6 +80,7 @@ class WikipediaSpider(scrapy.Spider):
         self.start_date = start_date
         self.end_date = end_date
         self.language = language
+        self.subtitle = language
 
     def start_requests(self):
         date_list = self.get_date_list(self.start_date, self.end_date)

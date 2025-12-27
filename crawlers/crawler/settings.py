@@ -20,4 +20,4 @@ DOWNLOADER_MIDDLEWARES = {
     "rotating_proxies.middlewares.RotatingProxyMiddleware": 610,
     "rotating_proxies.middlewares.BanDetectionMiddleware": 620,
 }
-# ROTATING_PROXY_LIST = ["http://127.0.0.1:8890"]
+ROTATING_PROXY_LIST = ["http://127.0.0.1:8890"]
