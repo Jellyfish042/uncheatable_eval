@@ -256,6 +256,31 @@ class Evaluator:
 
         return model, tokenizer
 
+    def load_modelscope(self, config: EvaluationConfig):
+        from transformers import AutoTokenizer, AutoModelForCausalLM
+
+        # Import ModelScope's snapshot_download to download models from ModelScope
+        try:
+            from modelscope.hub.snapshot_download import snapshot_download
+            # Download model from ModelScope if not already cached
+            if not os.path.isdir(config.model_name_or_path):
+                model_path = snapshot_download(config.model_name_or_path, cache_dir=config.cache)
+            else:
+                model_path = config.model_name_or_path
+        except ImportError:
+            raise ImportError("ModelScope is not installed. Please install it with: pip install modelscope")
+        except Exception as e:
+            print(f"Warning: Failed to download from ModelScope, falling back to direct path: {e}")
+            model_path = config.model_name_or_path
+
+        # Load tokenizer and model using the ModelScope downloaded path
+        tokenizer = AutoTokenizer.from_pretrained(model_path, cache_dir=config.cache, **config.tokenizer_args)
+        model = AutoModelForCausalLM.from_pretrained(model_path, cache_dir=config.cache, **config.model_args).eval()
+
+        self.print_model_parameters_in_billions(model)
+
+        return model, tokenizer
+
     @staticmethod
     def calculate_log_sum(logits, target_token_ids, reduction="none"):
         return F.cross_entropy(logits[:-1], target_token_ids[1:], reduction=reduction)
@@ -518,6 +543,8 @@ class Evaluator:
             model, tokenizer = self.load_mamba(config)
         elif config.model_type == "mistral":
             model, tokenizer = self.load_mistral(config)
+        elif config.model_type == "modelscope":
+            model, tokenizer = self.load_modelscope(config)
         else:
             raise NotImplementedError
 
@@ -534,7 +561,7 @@ class Evaluator:
                 print(f"Evaluating {config.model_name_or_path} on {data_name}")
 
                 # eval
-                if config.model_type in ["hf", "mamba", "mistral"]:
+                if config.model_type in ["hf", "mamba", "mistral", "modelscope"]:
                     if config.batch_size > 1:
                         raise NotImplementedError
                     else:
