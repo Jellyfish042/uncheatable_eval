@@ -29,6 +29,19 @@ class WikipediaSpider(scrapy.Spider):
         "german": {"url": "https://de.wikipedia.org/w/api.php", "variant": None},
         "french": {"url": "https://fr.wikipedia.org/w/api.php", "variant": None},
         "arabic": {"url": "https://ar.wikipedia.org/w/api.php", "variant": None},
+        "russian": {"url": "https://ru.wikipedia.org/w/api.php", "variant": None},
+        "italian": {"url": "https://it.wikipedia.org/w/api.php", "variant": None},
+        "portuguese": {"url": "https://pt.wikipedia.org/w/api.php", "variant": None},
+        "korean": {"url": "https://ko.wikipedia.org/w/api.php", "variant": None},
+        "turkish": {"url": "https://tr.wikipedia.org/w/api.php", "variant": None},
+        "polish": {"url": "https://pl.wikipedia.org/w/api.php", "variant": None},
+        "dutch": {"url": "https://nl.wikipedia.org/w/api.php", "variant": None},
+        "swedish": {"url": "https://sv.wikipedia.org/w/api.php", "variant": None},
+        "indonesian": {"url": "https://id.wikipedia.org/w/api.php", "variant": None},
+        "hindi": {"url": "https://hi.wikipedia.org/w/api.php", "variant": None},
+        "persian": {"url": "https://fa.wikipedia.org/w/api.php", "variant": None},
+        "vietnamese": {"url": "https://vi.wikipedia.org/w/api.php", "variant": None},
+        "thai": {"url": "https://th.wikipedia.org/w/api.php", "variant": None},
     }
 
     STOP_WORDS = [
@@ -46,16 +59,21 @@ class WikipediaSpider(scrapy.Spider):
         "\n来源",
         "\n^ ",
         "\nReferencias",
+        "\nVéase también",
         "\n↑ ",
         "\nWeblinks",
         "\nEinzelnachweise",
         "\nLiteratur",
+        "\nQuellen und Literatur",
         "\nRéférences",
         "\nLiens externes",
         "\nArticles connexes",
         "\nNotes et références",
         "\nSee also",
         "\nNotes",
+        "\nVoir aussi",
+        "\nBibliographie",
+        "\nSiehe auch",
         "Références",
         "المراجع",
         "المصادر",
@@ -63,44 +81,97 @@ class WikipediaSpider(scrapy.Spider):
         "انظر أيضًا",
         "مراجع",
         "مصادر",
+        "\n参考文献",
+        "\n関連項目",
+        "\n外部リンク",
+        "\n出典",
+        "\n脚注",
+        "\nСм. также",
+        "\nЛитература",
+        "\nПримечания",
+        "\nСсылки",
+        "\nBibliografia",
+        "\nVedi anche",
+        "\nNote",
+        "\nRiferimenti",
+        "\nLigações externas",
+        "\nVer também",
+        "\nNotas",
+        "\n참고문헌",
+        "\n같이 보기",
+        "\n외부 링크",
+        "\n주석",
+        "\nKaynakça",
+        "\nAyrıca bakınız",
+        "\nDış bağlantılar",
+        "\nBibliografia",
+        "\nZobacz też",
+        "\nPrzypisy",
+        "\nLinki zewnętrzne",
+        "\nLiteratuur",
+        "\nZie ook",
+        "\nNoten",
+        "\nExterne links",
+        "\nReferensi",
+        "\nLihat juga",
+        "\nPranala luar",
+        "\nसन्दर्भ",
+        "\nयह भी देखें",
+        "\nबाहरी कड़ियाँ",
+        "\nپیوند به بیرون",
+        "\nمنابع",
+        "\nجستارهای وابسته",
+        "\nXem thêm",
+        "\nTham khảo",
+        "\nLiên kết ngoài",
+        "\nอ้างอิง",
+        "\nดูเพิ่ม",
+        "\nแหล่งข้อมูลอื่น",
     ]
 
     def __init__(self, start_date="2025-12-01", end_date="2025-12-14", language="english", *args, **kwargs):
         super(WikipediaSpider, self).__init__(*args, **kwargs)
 
-        if language not in self.LANGUAGE_CONFIG:
-            raise ValueError(f"Language '{language}' is not supported.")
+        if language == "nonenglish":
+            self.languages = [lang for lang in self.LANGUAGE_CONFIG.keys() if lang != "english"]
+        elif language == "all":
+            self.languages = list(self.LANGUAGE_CONFIG.keys())
+        else:
+            if language not in self.LANGUAGE_CONFIG:
+                raise ValueError(f"Language '{language}' is not supported.")
+            self.languages = [language]
 
         self.start_date = start_date
         self.end_date = end_date
         self.language = language
-        self.api_url = self.LANGUAGE_CONFIG[language]["url"]
-        self.website_prefix = self.api_url.replace("/w/api.php", "")
-        self.variant = self.LANGUAGE_CONFIG[language]["variant"]
         self.subtitle = language
 
     def start_requests(self):
         date_list = self.get_date_list(self.start_date, self.end_date)
 
-        for i in range(len(date_list) - 1):
-            rcstart = f"{date_list[i]}T00:00:00Z"
-            rcend = f"{date_list[i+1]}T00:00:00Z"
+        for lang in self.languages:
+            api_url = self.LANGUAGE_CONFIG[lang]["url"]
+            variant = self.LANGUAGE_CONFIG[lang]["variant"]
 
-            params = {
-                "action": "query",
-                "list": "recentchanges",
-                "rcstart": rcstart,
-                "rcend": rcend,
-                "rcdir": "newer",
-                "rctype": "new",
-                "rcprop": "title|timestamp",
-                "rcnamespace": "0",
-                "rclimit": 500,
-                "format": "json",
-            }
+            for i in range(len(date_list) - 1):
+                rcstart = f"{date_list[i]}T00:00:00Z"
+                rcend = f"{date_list[i+1]}T00:00:00Z"
 
-            url = f"{self.api_url}?{urlencode(params)}"
-            yield scrapy.Request(url=url, callback=self.parse_recent_changes, meta={"base_params": params})
+                params = {
+                    "action": "query",
+                    "list": "recentchanges",
+                    "rcstart": rcstart,
+                    "rcend": rcend,
+                    "rcdir": "newer",
+                    "rctype": "new",
+                    "rcprop": "title|timestamp",
+                    "rcnamespace": "0",
+                    "rclimit": 500,
+                    "format": "json",
+                }
+
+                url = f"{api_url}?{urlencode(params)}"
+                yield scrapy.Request(url=url, callback=self.parse_recent_changes, meta={"base_params": params, "lang": lang, "api_url": api_url, "variant": variant})
 
     def parse_recent_changes(self, response):
         data = response.json()
@@ -109,21 +180,26 @@ class WikipediaSpider(scrapy.Spider):
             self.logger.error(f"API Error: {data['error']}")
             return
 
+        lang = response.meta["lang"]
+        api_url = response.meta["api_url"]
+        variant = response.meta["variant"]
+        website_prefix = api_url.replace("/w/api.php", "")
+
         recent_changes = data.get("query", {}).get("recentchanges", [])
         for change in recent_changes:
             title = change["title"]
             timestamp = change["timestamp"]
 
             content_params = {"action": "parse", "page": title, "prop": "text", "format": "json"}
-            if self.variant:
-                content_params["variant"] = self.variant
+            if variant:
+                content_params["variant"] = variant
 
-            content_url = f"{self.api_url}?{urlencode(content_params)}"
+            content_url = f"{api_url}?{urlencode(content_params)}"
 
             yield scrapy.Request(
                 url=content_url,
                 callback=self.parse_content,
-                meta={"title": title, "date": timestamp, "url": f"{self.website_prefix}/wiki/{title.replace(' ', '_')}"},
+                meta={"title": title, "date": timestamp, "url": f"{website_prefix}/wiki/{title.replace(' ', '_')}", "lang": lang},
             )
 
         if "continue" in data:
@@ -131,8 +207,8 @@ class WikipediaSpider(scrapy.Spider):
             next_params = response.meta["base_params"].copy()
             next_params.update(continue_params)
 
-            next_url = f"{self.api_url}?{urlencode(next_params)}"
-            yield scrapy.Request(url=next_url, callback=self.parse_recent_changes, meta={"base_params": next_params})
+            next_url = f"{api_url}?{urlencode(next_params)}"
+            yield scrapy.Request(url=next_url, callback=self.parse_recent_changes, meta={"base_params": next_params, "lang": lang, "api_url": api_url, "variant": variant})
 
     def parse_content(self, response):
         data = response.json()
@@ -179,6 +255,7 @@ class WikipediaSpider(scrapy.Spider):
         item["url"] = response.meta["url"]
         item["metadata"] = {
             "title": response.meta["title"],
+            "language": response.meta["lang"],
             "entry_created_at": response.meta["date"],
             "crawled_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
