@@ -24,7 +24,7 @@ Specifically, we calculate the sum of negative log probabilities of the models o
 Determine the optimal `bos_mode` for your model first. Use `bos_mode_finder.py` to automatically detect the best setting for Hugging Face `AutoModelForCausalLM` models unless you know what you are doing.
 
 ```bash
-python bos_mode_finder.py --model_name_or_path="stabilityai/stablelm-2-1_6b" --tokenizer_name="stabilityai/stablelm-2-1_6b"
+python bos_mode_finder.py --model_name_or_path="Qwen/Qwen3-0.6B-Base" --tokenizer_name="Qwen/Qwen3-0.6B-Base"
 ```
 
 Tips:

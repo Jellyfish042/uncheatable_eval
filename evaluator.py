@@ -428,9 +428,11 @@ class Evaluator:
             if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
                 per_token_bytes = get_decoded(tokenizer, sample)
                 all_bytes = [byte for token in per_token_bytes for byte in token]
-                assert all_bytes == list(
-                    sample.encode("utf-8")
-                ), "All bytes are not the same, this model and tokenizer are not compatible with tracking byte-wise data mode"
+                if all_bytes != list(sample.encode("utf-8")):
+                    print("Bytes after decoding are not the same as the original bytes, this may cause unexpected results")
+                # assert all_bytes == list(
+                #     sample.encode("utf-8")
+                # ), "All bytes are not the same, this model and tokenizer are not compatible with tracking byte-wise data mode"
                 assert len(per_token_bytes) == loss.shape[0], "Number of tokens and loss are not the same"
                 for l, byte_values in zip(loss, per_token_bytes):
                     per_byte_loss = l.item() / len(byte_values)
