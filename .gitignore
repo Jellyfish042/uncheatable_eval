@@ -11,3 +11,7 @@ models/
 *.bat
 
 .agent/
+
+CLAUDE.local.md
+
+!support/uncheatable_eval_dev.jsonl
