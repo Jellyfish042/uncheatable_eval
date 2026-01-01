@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(timeout:*)",
+      "Bash(D:\\\\anaconda3\\\\envs\\\\torch2\\\\python.exe:*)"
+    ]
+  }
+}
