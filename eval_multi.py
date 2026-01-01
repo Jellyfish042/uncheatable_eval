@@ -13,6 +13,17 @@ MY_CACHE_DIR = None
 config_list = [
     ##### models with byte-wise data tracking #####
     # EvaluationConfig(
+    #     model_name_or_path="tencent/Youtu-LLM-2B-Base",
+    #     tokenizer_name="tencent/Youtu-LLM-2B-Base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_newline_token",
+    #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
+    #     enable_chunking=False,
+    #     track_byte_wise_data=True,
+    # ),
+    # EvaluationConfig(
     #     model_name_or_path="rwkv7-g1a-0.1b-20250728-ctx4096.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
@@ -272,14 +283,6 @@ config_list = [
     #     bos_mode="add_default_bos",
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
-    # EvaluationConfig(
-    #     model_name_or_path="state-spaces/mamba-130m-hf",
-    #     tokenizer_name="state-spaces/mamba-130m-hf",
-    #     model_type="hf",
-    #     cache=MY_CACHE_DIR,
-    #     bos_mode="add_default_bos",
-    #     data=data_list,
-    # ),
     ##### 0.5b models #####
     # EvaluationConfig(
     #     model_name_or_path="Qwen/Qwen3-0.6B-Base",
@@ -421,12 +424,6 @@ config_list = [
     #     bos_mode="add_default_eos",
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
-    # EvaluationConfig(
-    #     model_name_or_path="RWKV-5-World-1B5-v2-20231025-ctx4096",
-    #     tokenizer_name="rwkv_vocab_v20230424",
-    #     model_type="rwkv",
-    #     data=data_list,
-    # ),
     ##### 3B models #####
     # EvaluationConfig(
     #     model_name_or_path="mistralai/Ministral-3-3B-Base-2512",
@@ -564,12 +561,6 @@ config_list = [
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_default_bos",
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
-    # ),
-    # EvaluationConfig(
-    #     model_name_or_path="RWKV-5-World-3B-v2-20231113-ctx4096.pth",
-    #     tokenizer_name="rwkv_vocab_v20230424",
-    #     model_type="rwkv",
-    #     data=data_list,
     # ),
     # EvaluationConfig(
     #     model_name_or_path="Zyphra/Zamba2-2.7B",
