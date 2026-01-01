@@ -40,12 +40,25 @@ class ArxivSpider(scrapy.Spider):
             "computer_science": "cs",
             "physics": "physics",
             "mathematics": "math",
+            "economics": "econ",
+            "eess": "eess",
+            "q_biology": "qbio",
+            "q_finance": "qfin",
+            "statistics": "stat",
+            "other": "other",
         }
+
+        other_classifications = ["economics", "eess", "q_biology", "q_finance", "statistics"]
 
         self.start_date = start_date
         self.end_date = end_date
         self.classification = classification
         self.subtitle = subtitle_map[classification]
+
+        if classification == "other":
+            self.classifications = other_classifications
+        else:
+            self.classifications = [classification]
         self.page_size = int(page_size)
         self.size_limit = size_limit
         self.mineru_client = MinerUClient(api_url=mineru_api)
@@ -57,7 +70,6 @@ class ArxivSpider(scrapy.Spider):
             "terms-0-operator": "AND",
             "terms-0-term": "",
             "terms-0-field": "title",
-            f"classification-{self.classification}": "y",
             "classification-include_cross_list": "exclude",
             "date-year": "",
             "date-filter_by": "date_range",
@@ -69,6 +81,10 @@ class ArxivSpider(scrapy.Spider):
             "order": "-announced_date_first",
             "start": str(start_idx),
         }
+
+        for cls in self.classifications:
+            params[f"classification-{cls}"] = "y"
+
         return f"{base_url}?{urlencode(params)}", params
 
     def start_requests(self):
@@ -93,7 +109,17 @@ class ArxivSpider(scrapy.Spider):
             dt = datetime.strptime(raw_date.strip(), "%d %B, %Y")
             date_str = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-            self.logger.info(f"Paper: {title} | URL: {pdf_url}")
+            # Extract primary classification
+            primary_class = paper.css(".tags .tag.is-link::text").get()
+            if primary_class:
+                primary_class = primary_class.strip()
+                # Extract the main category (e.g., "eess" from "eess.IV")
+                actual_classification = primary_class.split(".")[0]
+            else:
+                # Fallback to self.classification if extraction fails
+                actual_classification = self.classification
+
+            self.logger.info(f"Paper: {title} | Classification: {primary_class} | URL: {pdf_url}")
 
             if pdf_url:
                 file_name = pdf_url.split("/")[-1] + ".pdf"
@@ -102,7 +128,13 @@ class ArxivSpider(scrapy.Spider):
                     url=pdf_url,
                     method="HEAD",
                     callback=self.check_pdf_size,
-                    meta={"file_name": file_name, "source_url": pdf_url, "title": title, "date": date_str},
+                    meta={
+                        "file_name": file_name,
+                        "source_url": pdf_url,
+                        "title": title,
+                        "date": date_str,
+                        "actual_classification": actual_classification,
+                    },
                 )
 
         current_idx = response.meta["start_idx"]
@@ -148,12 +180,15 @@ class ArxivSpider(scrapy.Spider):
 
             if content:
                 cleaned_content = self.clean_text(content)
+                # Use actual classification from meta, fallback to self.classification
+                actual_classification = response.meta.get("actual_classification", self.classification)
+
                 item = ArxivPaperItem()
                 item["content"] = cleaned_content
                 item["category"] = f"arxiv_{self.subtitle}"
                 item["date"] = response.meta["date"]
                 item["url"] = response.meta["source_url"]
-                item["metadata"] = {"title": response.meta["title"], "raw_content": content}
+                item["metadata"] = {"title": response.meta["title"], "raw_content": content, "classification": actual_classification}
                 yield item
                 self.logger.info(f"Successfully processed {file_name}")
             else:
