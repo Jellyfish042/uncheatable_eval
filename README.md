@@ -56,6 +56,36 @@ Start the evaluation:
 python eval_single.py
 ```
 
+## LLM Compressor
+
+The LLM compressor implements proof-of-concept text compression using language models with arithmetic coding. It demonstrates the relationship between language modeling capability and compression performance.
+
+**WARNING:** This is a slow proof-of-concept implementation, not practical for real-world use.
+
+### Compression with HuggingFace Models
+
+```bash
+python llm_compressor.py support/the_egg.txt compressed.bin --task compress
+```
+
+### Compression with RWKV7 Models
+
+```bash
+python llm_compressor.py support/the_egg.txt compressed.bin --model "path/to/model.pth" --model_type rwkv7 --tokenizer "rwkv_vocab_v20230424" --task compress
+```
+
+### Decompression with HuggingFace Models
+
+```bash
+python llm_compressor.py compressed.bin output.txt --task decompress
+```
+
+### Decompression with RWKV7 Models
+
+```bash
+python llm_compressor.py compressed.bin output.txt --model "path/to/model.pth" --model_type rwkv7 --tokenizer "rwkv_vocab_v20230424" --task decompress
+```
+
 ## Visualization
 
 Run `show_results.ipynb` to visualize the evaluation results.
