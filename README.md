@@ -56,15 +56,16 @@ Start the evaluation:
 python eval_single.py
 ```
 
+## Visualization
+
+Run `show_results.ipynb` to visualize the evaluation results.
+
+
 ## LLM Compressor
 
 The LLM compressor implements proof-of-concept text compression using language models with arithmetic coding. It demonstrates the relationship between language modeling capability and compression performance.
 
 **WARNING:** This is a slow proof-of-concept implementation, not practical for real-world use.
-
-## Visualization
-
-Run `show_results.ipynb` to visualize the evaluation results.
 
 ### Compression with HuggingFace Models (Use Qwen3-0.6B-Base as default model)
 
