@@ -7,6 +7,11 @@ from tqdm import tqdm
 import struct
 import time
 
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+torch.use_deterministic_algorithms(True)
+torch.backends.cudnn.benchmark = False
+torch.backends.cudnn.deterministic = True
+
 
 class BitOutputStream:
     def __init__(self, file):
