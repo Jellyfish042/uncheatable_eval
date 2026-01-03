@@ -212,9 +212,10 @@ def compress_file(
     cache_dir=None,
 ):
     print("=" * 60)
-    print(f"LLM-based Compression - Concept Demonstration ({model_type.upper()})")
+    print(f"LLM-based Compression")
     print("WARNING: This is a proof-of-concept implementation.")
     print("Compression/decompression is VERY SLOW and not practical for real use.")
+    print("Compressed files are NOT cross-platform compatible.")
     print("=" * 60)
     print()
 
@@ -343,9 +344,10 @@ def decompress_file(
     cache_dir=None,
 ):
     print("=" * 60)
-    print(f"LLM-based Decompression - Concept Demonstration")
+    print(f"LLM-based Decompression")
     print("WARNING: This is a proof-of-concept implementation.")
     print("Compression/decompression is VERY SLOW and not practical for real use.")
+    print("Compressed files are NOT cross-platform compatible.")
     print("=" * 60)
     print()
 

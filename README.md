@@ -62,7 +62,11 @@ The LLM compressor implements proof-of-concept text compression using language m
 
 **WARNING:** This is a slow proof-of-concept implementation, not practical for real-world use.
 
-### Compression with HuggingFace Models
+## Visualization
+
+Run `show_results.ipynb` to visualize the evaluation results.
+
+### Compression with HuggingFace Models (Use Qwen3-0.6B-Base as default model)
 
 ```bash
 python llm_compressor.py support/the_egg.txt compressed.bin --task compress
@@ -74,7 +78,7 @@ python llm_compressor.py support/the_egg.txt compressed.bin --task compress
 python llm_compressor.py support/the_egg.txt compressed.bin --model "path/to/model.pth" --model_type rwkv7 --tokenizer "rwkv_vocab_v20230424" --task compress
 ```
 
-### Decompression with HuggingFace Models
+### Decompression with HuggingFace Models (Use Qwen3-0.6B-Base as default model)
 
 ```bash
 python llm_compressor.py compressed.bin output.txt --task decompress
@@ -85,10 +89,6 @@ python llm_compressor.py compressed.bin output.txt --task decompress
 ```bash
 python llm_compressor.py compressed.bin output.txt --model "path/to/model.pth" --model_type rwkv7 --tokenizer "rwkv_vocab_v20230424" --task decompress
 ```
-
-## Visualization
-
-Run `show_results.ipynb` to visualize the evaluation results.
 
 ## Data Collection
 
@@ -121,6 +121,7 @@ scrapy crawl github -a access_token="xxxxxx" -a start_date="2025-12-01" -a end_d
 * `js` (JavaScript)
 * `ts` (TypeScript)
 * `md` (Markdown)
+* `other` (Other)
 
 ### AO3 Crawler
 
@@ -133,6 +134,7 @@ scrapy crawl ao3 -a start_date="2025-12-01" -a end_date="2025-12-15" -a language
 
 * `english` (English)
 * `chinese` (Chinese)
+* `nonenglish` (Non-English)
 
 ### BBC News Crawler
 
@@ -153,6 +155,7 @@ scrapy crawl arxiv -a start_date="2025-12-01" -a end_date="2025-12-15" -a classi
 * `computer_science` (Computer Science)
 * `physics` (Physics)
 * `mathematics` (Mathematics)
+* `other` (Other)
 
 ### Wikipedia Crawler
 
@@ -160,6 +163,11 @@ scrapy crawl arxiv -a start_date="2025-12-01" -a end_date="2025-12-15" -a classi
 scrapy crawl wikipedia -a start_date="2025-12-01" -a end_date="2025-12-15"
 
 ```
+
+**Supported values for `language`:**
+
+* `english` (English)
+* `nonenglish` (Non-English)
 
 > **Note:** For the AO3, arXiv, BBC News, and Wikipedia crawlers, you may need to configure the `ROTATING_PROXY_LIST` in `crawlers/crawler/settings.py` to use proxies for reliable data scraping.
 
