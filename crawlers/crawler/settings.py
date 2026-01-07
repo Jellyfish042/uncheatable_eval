@@ -1,3 +1,5 @@
+import os
+
 BOT_NAME = "crawler"
 SPIDER_MODULES = ["crawler.spiders"]
 NEWSPIDER_MODULE = "crawler.spiders"
@@ -15,9 +17,10 @@ ITEM_PIPELINES = {}
 
 FEED_EXPORT_ENCODING = "utf-8"
 
-# You can add your own proxies to the ROTATING_PROXY_LIST
 DOWNLOADER_MIDDLEWARES = {
     "rotating_proxies.middlewares.RotatingProxyMiddleware": 610,
     "rotating_proxies.middlewares.BanDetectionMiddleware": 620,
 }
-# ROTATING_PROXY_LIST = ["http://127.0.0.1:8890"]
+# You can add your own proxies via ROTATING_PROXY_LIST environment variable
+_proxy_list_str = os.environ.get("ROTATING_PROXY_LIST", "")
+ROTATING_PROXY_LIST = [p.strip() for p in _proxy_list_str.split(",") if p.strip()]
