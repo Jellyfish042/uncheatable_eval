@@ -3,6 +3,11 @@ import argparse
 from pathlib import Path
 from transformers import GPT2Tokenizer
 import warnings
+import unicodedata
+
+
+def nfc_normalize(text: str) -> str:
+    return unicodedata.normalize("NFC", text)
 
 
 def soft_truncate(text, target_length, search_range):
@@ -81,6 +86,7 @@ def process_file(input_path, output_path, cut_off_length, max_sample, search_ran
     data = read_jsonl(input_path)
     data = data[:max_sample]
     for sample in data:
+        sample["content"] = nfc_normalize(sample["content"])
         sample["untruncated_content"] = sample["content"]
         sample["content"] = truncate_with_token_limit(sample["content"], cut_off_length, search_range, max_tokens, tokenizer)
     save_jsonl(data, output_path)
