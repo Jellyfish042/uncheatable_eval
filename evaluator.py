@@ -545,8 +545,10 @@ class Evaluator:
         # load TokenizerBytesConverter if check_byte_wise_data is True
         if config.track_byte_wise_data and config.model_type in ["hf", "mamba", "mistral", "modelscope"]:
             tokenizer_bytes_converter = TokenizerBytesConverter(config.tokenizer_name, config.cache, **config.tokenizer_args)
+            token2bytes_convert_func = tokenizer_bytes_converter.encode_to_bytes
         else:
             tokenizer_bytes_converter = None
+            token2bytes_convert_func = None
 
         for dataset_name_or_path in config.data:
 
@@ -572,7 +574,7 @@ class Evaluator:
                             chunk_size=config.chunk_size,
                             bos_mode=config.bos_mode,
                             track_byte_wise_data=config.track_byte_wise_data,
-                            token2bytes_convert_func=tokenizer_bytes_converter.encode_to_bytes,
+                            token2bytes_convert_func=token2bytes_convert_func,
                         )
                 elif config.model_type in ["rwkv", "rwkv7"]:
                     results = self.eval_rwkv(
