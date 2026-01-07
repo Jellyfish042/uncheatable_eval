@@ -9,11 +9,12 @@ data_list = [
 ]
 
 MY_CACHE_DIR = None
+RWKV_CACHE_DIR = None
 
 config_list = [
     ##### 0.1b models #####
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g1a-0.1b-20250728-ctx4096.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1a-0.1b-20250728-ctx4096.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -56,7 +57,7 @@ config_list = [
     #     model_args={"torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g1a-0.4b-20250905-ctx4096",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1a-0.4b-20250905-ctx4096",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -89,7 +90,7 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g1b-1.5b-20251202-ctx8192.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1b-1.5b-20251202-ctx8192.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -102,12 +103,6 @@ config_list = [
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_newline_token",
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
-    # ),
-    # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g1b-1.5b-20251202-ctx8192.pth",
-    #     tokenizer_name="rwkv_vocab_v20230424",
-    #     model_type="rwkv7",
-    #     data=data_list,
     # ),
     # EvaluationConfig(
     #     model_name_or_path="Qwen/Qwen2.5-1.5B",
@@ -206,7 +201,7 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g1b-2.9b-20251205-ctx8192.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-2.9b-20251231-ctx8192.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -353,7 +348,7 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g0b-7.2b-20251220-ctx8192",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-7.2b-20251231-ctx8192",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -483,7 +478,7 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g0b-13.3b-20251130-ctx8192.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-13.3b-20251231-ctx8192.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -617,7 +612,7 @@ config_list = [
     #     track_byte_wise_data=True,
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g1a-0.1b-20250728-ctx4096.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1a-0.1b-20250728-ctx4096.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -669,7 +664,7 @@ config_list = [
     #     track_byte_wise_data=True,
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g1a-0.4b-20250905-ctx4096",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1a-0.4b-20250905-ctx4096",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -710,7 +705,7 @@ config_list = [
     #     track_byte_wise_data=True,
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g1b-1.5b-20251202-ctx8192.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1b-1.5b-20251202-ctx8192.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -751,7 +746,7 @@ config_list = [
     #     track_byte_wise_data=True,
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g1b-2.9b-20251205-ctx8192.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-2.9b-20251231-ctx8192.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -792,7 +787,7 @@ config_list = [
     #     track_byte_wise_data=True,
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g0b-7.2b-20251220-ctx8192.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-7.2b-20251231-ctx8192.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -833,7 +828,7 @@ config_list = [
     #     track_byte_wise_data=True,
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="rwkv7-g0b-13.3b-20251130-ctx8192.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-13.3b-20251231-ctx8192.pth",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
