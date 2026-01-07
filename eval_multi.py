@@ -168,6 +168,15 @@ config_list = [
     #     bos_mode="add_default_eos",
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path="tencent/Youtu-LLM-2B-Base",
+    #     tokenizer_name="tencent/Youtu-LLM-2B-Base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_newline_token",
+    #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
+    # ),
     ##### 3B models #####
     # EvaluationConfig(
     #     model_name_or_path="mistralai/Ministral-3-3B-Base-2512",
@@ -335,9 +344,9 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="meta-llama/Meta-Llama-3-8B",
-    #     tokenizer_name="meta-llama/Meta-Llama-3-8B",
-    #     model_type="hf",
+    #     model_name_or_path="LLM-Research/Meta-Llama-3.1-8B",
+    #     tokenizer_name="LLM-Research/Meta-Llama-3.1-8B",
+    #     model_type="modelscope",
     #     data=data_list,
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_default_bos",
@@ -448,6 +457,15 @@ config_list = [
     # EvaluationConfig(
     #     model_name_or_path="meta-llama/Llama-2-7b-hf",
     #     tokenizer_name="meta-llama/Llama-2-7b-hf",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path="marin-community/marin-8b-base",
+    #     tokenizer_name="marin-community/marin-8b-base",
     #     model_type="hf",
     #     data=data_list,
     #     cache=MY_CACHE_DIR,
@@ -575,6 +593,15 @@ config_list = [
     #     data=data_list,
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_default_eos",
+    #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path="marin-community/marin-32b-base",
+    #     tokenizer_name="marin-community/marin-32b-base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     ##### models with byte-wise data tracking #####

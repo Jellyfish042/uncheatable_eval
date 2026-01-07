@@ -14,16 +14,7 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
-try:
-    from transformers.models.gpt2.tokenization_gpt2 import bytes_to_unicode
-except ImportError:
-    print("Warning: transformers.models.gpt2.tokenization_gpt2 is not available, tracking byte-wise data is not supported")
-
-
-def get_decoded(tokenizer, text):
-    u2b = {v: k for k, v in bytes_to_unicode().items()}
-    tokens = tokenizer.convert_ids_to_tokens(tokenizer.encode(text))
-    return [[u2b[char] for char in token] for token in tokens]
+from helpers import TokenizerBytesConverter
 
 
 @dataclass
@@ -262,6 +253,7 @@ class Evaluator:
         # Import ModelScope's snapshot_download to download models from ModelScope
         try:
             from modelscope.hub.snapshot_download import snapshot_download
+
             # Download model from ModelScope if not already cached
             if not os.path.isdir(config.model_name_or_path):
                 model_path = snapshot_download(config.model_name_or_path, cache_dir=config.cache)
@@ -387,7 +379,7 @@ class Evaluator:
         return data_dict
 
     @torch.no_grad()
-    def eval_hf_model(self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data):
+    def eval_hf_model(self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data, token2bytes_convert_func):
         data = []
         token_length_list = []
         char_count = []
@@ -426,7 +418,7 @@ class Evaluator:
 
             byte_index = 0
             if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
-                per_token_bytes = get_decoded(tokenizer, sample)
+                per_token_bytes = token2bytes_convert_func(sample)
                 all_bytes = [byte for token in per_token_bytes for byte in token]
                 if all_bytes != list(sample.encode("utf-8")):
                     print("Bytes after decoding are not the same as the original bytes, this may cause unexpected results")
@@ -550,6 +542,12 @@ class Evaluator:
         else:
             raise NotImplementedError
 
+        # load TokenizerBytesConverter if check_byte_wise_data is True
+        if config.track_byte_wise_data and config.model_type in ["hf", "mamba", "mistral", "modelscope"]:
+            tokenizer_bytes_converter = TokenizerBytesConverter(config.tokenizer_name, config.cache, **config.tokenizer_args)
+        else:
+            tokenizer_bytes_converter = None
+
         for dataset_name_or_path in config.data:
 
             dataset = self.load_data_smart(dataset_name_or_path)
@@ -574,6 +572,7 @@ class Evaluator:
                             chunk_size=config.chunk_size,
                             bos_mode=config.bos_mode,
                             track_byte_wise_data=config.track_byte_wise_data,
+                            token2bytes_convert_func=tokenizer_bytes_converter.encode_to_bytes,
                         )
                 elif config.model_type in ["rwkv", "rwkv7"]:
                     results = self.eval_rwkv(
