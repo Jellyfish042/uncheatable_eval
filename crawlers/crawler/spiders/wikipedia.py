@@ -1,5 +1,6 @@
 import scrapy
 import re
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from bs4 import BeautifulSoup
@@ -146,32 +147,88 @@ class WikipediaSpider(scrapy.Spider):
         self.language = language
         self.subtitle = language
 
+        # Language balancing: track item counts per language for priority-based balancing
+        self.language_item_counts = defaultdict(int)
+        self.balance_languages = language in ("nonenglish", "all")
+        if self.balance_languages:
+            self.logger.info(f"Language balancing enabled: {len(self.languages)} languages, priority-based")
+
+            # Date range queue for each language (for efficient request scheduling)
+            self.language_date_queues = {}
+            date_list = self.get_date_list(start_date, end_date)
+            date_ranges = [(date_list[i], date_list[i + 1]) for i in range(len(date_list) - 1)]
+            for lang in self.languages:
+                self.language_date_queues[lang] = list(date_ranges)
+
     def start_requests(self):
-        date_list = self.get_date_list(self.start_date, self.end_date)
+        if self.balance_languages:
+            # Balanced mode: send only one initial request per language
+            for lang in self.languages:
+                for request in self._create_date_range_request(lang):
+                    yield request
+        else:
+            # Normal mode: send all requests at once
+            date_list = self.get_date_list(self.start_date, self.end_date)
 
-        for lang in self.languages:
-            api_url = self.LANGUAGE_CONFIG[lang]["url"]
-            variant = self.LANGUAGE_CONFIG[lang]["variant"]
+            for lang in self.languages:
+                api_url = self.LANGUAGE_CONFIG[lang]["url"]
+                variant = self.LANGUAGE_CONFIG[lang]["variant"]
 
-            for i in range(len(date_list) - 1):
-                rcstart = f"{date_list[i]}T00:00:00Z"
-                rcend = f"{date_list[i+1]}T00:00:00Z"
+                for i in range(len(date_list) - 1):
+                    rcstart = f"{date_list[i]}T00:00:00Z"
+                    rcend = f"{date_list[i+1]}T00:00:00Z"
 
-                params = {
-                    "action": "query",
-                    "list": "recentchanges",
-                    "rcstart": rcstart,
-                    "rcend": rcend,
-                    "rcdir": "newer",
-                    "rctype": "new",
-                    "rcprop": "title|timestamp",
-                    "rcnamespace": "0",
-                    "rclimit": 500,
-                    "format": "json",
-                }
+                    params = {
+                        "action": "query",
+                        "list": "recentchanges",
+                        "rcstart": rcstart,
+                        "rcend": rcend,
+                        "rcdir": "newer",
+                        "rctype": "new",
+                        "rcprop": "title|timestamp",
+                        "rcnamespace": "0",
+                        "rclimit": 500,
+                        "format": "json",
+                    }
 
-                url = f"{api_url}?{urlencode(params)}"
-                yield scrapy.Request(url=url, callback=self.parse_recent_changes, meta={"base_params": params, "lang": lang, "api_url": api_url, "variant": variant})
+                    url = f"{api_url}?{urlencode(params)}"
+                    yield scrapy.Request(url=url, callback=self.parse_recent_changes, meta={"base_params": params, "lang": lang, "api_url": api_url, "variant": variant})
+
+    def _create_date_range_request(self, lang):
+        """Create a request for the next date range of a language. Returns a list of requests."""
+        # Check if date queue is empty
+        if not self.language_date_queues.get(lang):
+            return []
+
+        start_date, end_date = self.language_date_queues[lang].pop(0)
+        api_url = self.LANGUAGE_CONFIG[lang]["url"]
+        variant = self.LANGUAGE_CONFIG[lang]["variant"]
+
+        rcstart = f"{start_date}T00:00:00Z"
+        rcend = f"{end_date}T00:00:00Z"
+
+        params = {
+            "action": "query",
+            "list": "recentchanges",
+            "rcstart": rcstart,
+            "rcend": rcend,
+            "rcdir": "newer",
+            "rctype": "new",
+            "rcprop": "title|timestamp",
+            "rcnamespace": "0",
+            "rclimit": 500,
+            "format": "json",
+        }
+
+        url = f"{api_url}?{urlencode(params)}"
+        # Priority: languages with fewer items get higher priority (lower number = higher priority)
+        priority = -self.language_item_counts[lang]
+        return [scrapy.Request(
+            url=url,
+            callback=self.parse_recent_changes,
+            meta={"base_params": params, "lang": lang, "api_url": api_url, "variant": variant},
+            priority=priority,
+        )]
 
     def parse_recent_changes(self, response):
         data = response.json()
@@ -196,10 +253,13 @@ class WikipediaSpider(scrapy.Spider):
 
             content_url = f"{api_url}?{urlencode(content_params)}"
 
+            # In balanced mode, prioritize content requests for languages with fewer items
+            priority = -self.language_item_counts[lang] if self.balance_languages else 0
             yield scrapy.Request(
                 url=content_url,
                 callback=self.parse_content,
                 meta={"title": title, "date": timestamp, "url": f"{website_prefix}/wiki/{title.replace(' ', '_')}", "lang": lang},
+                priority=priority,
             )
 
         if "continue" in data:
@@ -208,13 +268,25 @@ class WikipediaSpider(scrapy.Spider):
             next_params.update(continue_params)
 
             next_url = f"{api_url}?{urlencode(next_params)}"
-            yield scrapy.Request(url=next_url, callback=self.parse_recent_changes, meta={"base_params": next_params, "lang": lang, "api_url": api_url, "variant": variant})
+            priority = -self.language_item_counts[lang] if self.balance_languages else 0
+            yield scrapy.Request(
+                url=next_url,
+                callback=self.parse_recent_changes,
+                meta={"base_params": next_params, "lang": lang, "api_url": api_url, "variant": variant},
+                priority=priority,
+            )
+        elif self.balance_languages:
+            # No more pages for this date range, schedule next date range for this language
+            for next_request in self._create_date_range_request(lang):
+                yield next_request
 
     def parse_content(self, response):
         data = response.json()
 
         if "error" in data or "parse" not in data:
             return
+
+        lang = response.meta["lang"]
 
         html_content = data["parse"]["text"]["*"]
 
@@ -259,6 +331,10 @@ class WikipediaSpider(scrapy.Spider):
             "entry_created_at": response.meta["date"],
             "crawled_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
+
+        # Update language count for balancing
+        if self.balance_languages:
+            self.language_item_counts[lang] += 1
 
         yield item
 

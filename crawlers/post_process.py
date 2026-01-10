@@ -90,6 +90,29 @@ def process_file(input_path, output_path, cut_off_length, max_sample, search_ran
         sample["untruncated_content"] = sample["content"]
         sample["content"] = truncate_with_token_limit(sample["content"], cut_off_length, search_range, max_tokens, tokenizer)
     save_jsonl(data, output_path)
+
+    # Collect statistics
+    token_counts = []
+    char_counts = []
+    for sample in data:
+        content = sample["content"]
+        tokens = tokenizer.encode(content)
+        token_counts.append(len(tokens))
+        char_counts.append(len(content))
+
+    # Print statistics
+    if token_counts:
+        avg_tokens = sum(token_counts) / len(token_counts)
+        max_tokens_stat = max(token_counts)
+        min_tokens_stat = min(token_counts)
+        avg_chars = sum(char_counts) / len(char_counts)
+        max_chars = max(char_counts)
+        min_chars = min(char_counts)
+
+        print(f"  Statistics:")
+        print(f"    Tokens (GPT-2 tokenizer) - avg: {avg_tokens:.1f}, max: {max_tokens_stat}, min: {min_tokens_stat}")
+        print(f"    Chars  - avg: {avg_chars:.1f}, max: {max_chars}, min: {min_chars}")
+
     return len(data)
 
 
