@@ -38,6 +38,7 @@ class EvaluationConfig:
     chunk_size: int = 4000  # input tokens will be split into chunks of this size
     batch_size: int = 1  # batch size for inference, batch size > 1 is buggy and not supported yet
     track_byte_wise_data: bool = False  # whether to track byte-wise data
+    track_single_sample_byte_wise_data: bool = False  # whether to track byte-wise data for each individual sample
 
     def __post_init__(self):
 
@@ -45,6 +46,9 @@ class EvaluationConfig:
         assert self.chunk_size > 2, "Chunk size must be greater than 2"
         if self.track_byte_wise_data:
             assert not self.enable_chunking, "Chunking must be disabled to track byte-wise data"
+        if self.track_single_sample_byte_wise_data:
+            assert not self.enable_chunking, "Chunking must be disabled to track single sample byte-wise data"
+            assert self.track_byte_wise_data, "track_byte_wise_data must be enabled to track single sample byte-wise data"
 
         assert self.bos_mode in [
             "add_default_bos",
@@ -304,7 +308,7 @@ class Evaluator:
         byte_size = len(byte_array)
         return byte_size
 
-    def eval_rwkv(self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data):
+    def eval_rwkv(self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data, track_single_sample_byte_wise_data=False):
         rwkv_test_data = []
         rwkv_token_length_list = []
         char_count = []
@@ -313,6 +317,10 @@ class Evaluator:
             max_byte_size = max(len(text.encode("utf-8")) for text in texts)
             byte_wise_loss_sum = [0.0 for _ in range(max_byte_size)]
             byte_wise_counts = [0 for _ in range(max_byte_size)]
+
+        if track_single_sample_byte_wise_data:
+            single_sample_texts = []
+            single_sample_byte_wise_losses = []
 
         for idx, sample in tqdm(enumerate(texts), total=len(texts)):
 
@@ -346,12 +354,20 @@ class Evaluator:
             byte_index = 0
             if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
                 token_bytes = [tokenizer.decodeBytes([token]) for token in input_chunk[1:]]
+
+                sample_byte_losses = []  # for single sample tracking
                 for l, byte_values in zip(loss.tolist(), token_bytes):
                     per_byte_loss = l / len(byte_values)
                     for _ in range(len(byte_values)):
                         byte_wise_loss_sum[byte_index] += per_byte_loss
                         byte_wise_counts[byte_index] += 1
                         byte_index += 1
+                        if track_single_sample_byte_wise_data:
+                            sample_byte_losses.append(per_byte_loss)
+
+                if track_single_sample_byte_wise_data:
+                    single_sample_texts.append(sample)
+                    single_sample_byte_wise_losses.append(sample_byte_losses)
 
         avg_byte_wise_loss = []
         if track_byte_wise_data:
@@ -376,10 +392,14 @@ class Evaluator:
             factor = (1.0 / math.log(2.0)) * 0.125 * 100.0
             data_dict["byte_wise_compression_rate"] = [loss_val * factor for loss_val in avg_byte_wise_loss]
 
+        if track_single_sample_byte_wise_data:
+            data_dict["single_sample_texts"] = single_sample_texts
+            data_dict["single_sample_byte_wise_losses"] = single_sample_byte_wise_losses
+
         return data_dict
 
     @torch.no_grad()
-    def eval_hf_model(self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data, token2bytes_convert_func):
+    def eval_hf_model(self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data, token2bytes_convert_func, track_single_sample_byte_wise_data=False):
         data = []
         token_length_list = []
         char_count = []
@@ -396,6 +416,10 @@ class Evaluator:
             max_byte_size = max(len(text.encode("utf-8")) for text in texts)
             byte_wise_loss_sum = [0.0 for _ in range(max_byte_size)]
             byte_wise_counts = [0 for _ in range(max_byte_size)]
+
+        if track_single_sample_byte_wise_data:
+            single_sample_texts = []
+            single_sample_byte_wise_losses = []
 
         for idx, sample in tqdm(enumerate(texts), total=len(texts), desc="Evaluating"):
 
@@ -426,12 +450,20 @@ class Evaluator:
                 #     sample.encode("utf-8")
                 # ), "All bytes are not the same, this model and tokenizer are not compatible with tracking byte-wise data mode"
                 assert len(per_token_bytes) == loss.shape[0], "Number of tokens and loss are not the same"
+
+                sample_byte_losses = []  # for single sample tracking
                 for l, byte_values in zip(loss, per_token_bytes):
                     per_byte_loss = l.item() / len(byte_values)
                     for _ in range(len(byte_values)):
                         byte_wise_loss_sum[byte_index] += per_byte_loss
                         byte_wise_counts[byte_index] += 1
                         byte_index += 1
+                        if track_single_sample_byte_wise_data:
+                            sample_byte_losses.append(per_byte_loss)
+
+                if track_single_sample_byte_wise_data:
+                    single_sample_texts.append(sample)
+                    single_sample_byte_wise_losses.append(sample_byte_losses)
 
             token_length_list.append(seq_length)
             data.append(neg_log_prob_temp)
@@ -459,6 +491,10 @@ class Evaluator:
             data_dict["byte_wise_counts"] = byte_wise_counts
             factor = (1.0 / math.log(2.0)) * 0.125 * 100.0
             data_dict["byte_wise_compression_rate"] = [loss_val * factor for loss_val in avg_byte_wise_loss]
+
+        if track_single_sample_byte_wise_data:
+            data_dict["single_sample_texts"] = single_sample_texts
+            data_dict["single_sample_byte_wise_losses"] = single_sample_byte_wise_losses
 
         return data_dict
 
@@ -575,6 +611,7 @@ class Evaluator:
                             bos_mode=config.bos_mode,
                             track_byte_wise_data=config.track_byte_wise_data,
                             token2bytes_convert_func=token2bytes_convert_func,
+                            track_single_sample_byte_wise_data=config.track_single_sample_byte_wise_data,
                         )
                 elif config.model_type in ["rwkv", "rwkv7"]:
                     results = self.eval_rwkv(
@@ -584,6 +621,7 @@ class Evaluator:
                         chunk_size=config.chunk_size,
                         bos_mode=config.bos_mode,
                         track_byte_wise_data=config.track_byte_wise_data,
+                        track_single_sample_byte_wise_data=config.track_single_sample_byte_wise_data,
                     )
                 else:
                     raise NotImplementedError
@@ -603,11 +641,12 @@ class Evaluator:
                 results["compression_rate"] = results["neg_log_prob_sum"] / results["avg bytes"] * (1 / math.log(2)) * 0.125 * 100
                 results["enable_chunking"] = config.enable_chunking
                 results["track_byte_wise_data"] = config.track_byte_wise_data
+                results["track_single_sample_byte_wise_data"] = config.track_single_sample_byte_wise_data
 
                 self.make_log(results, config.log_path)
 
                 print(f"Finished evaluating {config.model_name_or_path} on {data_name}")
-                skip_keys = {"byte_wise_loss", "byte_wise_counts", "byte_wise_compression_rate"}
+                skip_keys = {"byte_wise_loss", "byte_wise_counts", "byte_wise_compression_rate", "single_sample_texts", "single_sample_byte_wise_losses"}
                 filtered_results = {k: v for k, v in results.items() if k not in skip_keys}
                 print(json.dumps(filtered_results, indent=4, ensure_ascii=False, default=self.default_serializer))
                 print("-" * 80)
