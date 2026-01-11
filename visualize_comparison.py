@@ -19,9 +19,165 @@ Color scheme (based on deviation from average delta):
 import argparse
 import json
 import os
-from typing import List, Tuple, Optional
+import re
+from typing import List, Tuple, Optional, Set
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+
+from helpers import TokenizerBytesConverter
+
+
+# Global tokenizers (lazy loaded)
+_qwen_tokenizer = None
+_rwkv_tokenizer = None
+
+
+def get_qwen_tokenizer():
+    """Lazy load Qwen tokenizer."""
+    global _qwen_tokenizer
+    if _qwen_tokenizer is None:
+        _qwen_tokenizer = TokenizerBytesConverter("Qwen/Qwen3-0.6B-Base")
+    return _qwen_tokenizer
+
+
+def get_rwkv_tokenizer():
+    """Lazy load RWKV tokenizer."""
+    global _rwkv_tokenizer
+    if _rwkv_tokenizer is None:
+        from rwkv.utils import PIPELINE
+        from rwkv.rwkv_tokenizer import TRIE_TOKENIZER
+        _rwkv_tokenizer = TRIE_TOKENIZER("rwkv_vocab_v20230424.txt")
+    return _rwkv_tokenizer
+
+
+def get_tokenizer_boundaries(text: str, tokenizer, is_rwkv: bool = False) -> Set[int]:
+    """
+    Get token boundaries (byte positions) for a given text using the specified tokenizer.
+
+    Args:
+        text: The input text
+        tokenizer: Either TokenizerBytesConverter (for Qwen) or RWKV tokenizer
+        is_rwkv: Whether this is an RWKV tokenizer
+
+    Returns:
+        Set of byte positions where token boundaries occur
+    """
+    boundaries = set()
+    boundaries.add(0)  # Start is always a boundary
+
+    if is_rwkv:
+        # RWKV tokenizer
+        tokenized = tokenizer.encode(text)
+        if hasattr(tokenized, "ids"):
+            token_ids = tokenized.ids
+        else:
+            token_ids = tokenized
+
+        byte_pos = 0
+        for token_id in token_ids:
+            token_bytes = tokenizer.decodeBytes([token_id])
+            byte_pos += len(token_bytes)
+            boundaries.add(byte_pos)
+    else:
+        # Qwen tokenizer (TokenizerBytesConverter)
+        token_bytes_list = tokenizer.encode_to_bytes(text)
+        byte_pos = 0
+        for token_bytes in token_bytes_list:
+            byte_pos += len(token_bytes)
+            boundaries.add(byte_pos)
+
+    return boundaries
+
+
+def get_token_info_for_text(text: str) -> dict:
+    """
+    Get detailed token information for each byte position.
+
+    Returns:
+        dict with:
+            - 'common_boundaries': sorted list of common boundaries
+            - 'qwen_tokens': list of (start, end, token_str) for Qwen
+            - 'rwkv_tokens': list of (start, end, token_str) for RWKV
+            - 'byte_to_qwen': mapping from byte_start to token index
+            - 'byte_to_rwkv': mapping from byte_start to token index
+    """
+    qwen_tokenizer = get_qwen_tokenizer()
+    rwkv_tokenizer = get_rwkv_tokenizer()
+
+    text_bytes = text.encode("utf-8")
+
+    # Get Qwen tokens with positions
+    qwen_tokens = []
+    byte_to_qwen = {}
+    qwen_bytes_list = qwen_tokenizer.encode_to_bytes(text)
+    byte_pos = 0
+    for idx, token_bytes in enumerate(qwen_bytes_list):
+        start = byte_pos
+        end = byte_pos + len(token_bytes)
+        try:
+            token_str = bytes(token_bytes).decode("utf-8")
+        except UnicodeDecodeError:
+            token_str = repr(bytes(token_bytes))
+        qwen_tokens.append((start, end, token_str))
+        byte_to_qwen[start] = idx
+        byte_pos = end
+
+    # Get RWKV tokens with positions
+    rwkv_tokens = []
+    byte_to_rwkv = {}
+    tokenized = rwkv_tokenizer.encode(text)
+    if hasattr(tokenized, "ids"):
+        token_ids = tokenized.ids
+    else:
+        token_ids = tokenized
+
+    byte_pos = 0
+    for idx, token_id in enumerate(token_ids):
+        token_bytes = rwkv_tokenizer.decodeBytes([token_id])
+        start = byte_pos
+        end = byte_pos + len(token_bytes)
+        try:
+            token_str = token_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            token_str = repr(token_bytes)
+        rwkv_tokens.append((start, end, token_str))
+        byte_to_rwkv[start] = idx
+        byte_pos = end
+
+    # Get common boundaries
+    qwen_boundaries = set([0] + [t[1] for t in qwen_tokens])
+    rwkv_boundaries = set([0] + [t[1] for t in rwkv_tokens])
+    common_boundaries = sorted(qwen_boundaries & rwkv_boundaries)
+
+    return {
+        'common_boundaries': common_boundaries,
+        'qwen_tokens': qwen_tokens,
+        'rwkv_tokens': rwkv_tokens,
+        'byte_to_qwen': byte_to_qwen,
+        'byte_to_rwkv': byte_to_rwkv,
+    }
+
+
+def get_common_boundaries(text: str) -> List[int]:
+    """
+    Get common token boundaries from both Qwen and RWKV tokenizers.
+
+    Args:
+        text: The input text
+
+    Returns:
+        Sorted list of byte positions where both tokenizers have boundaries
+    """
+    qwen_tokenizer = get_qwen_tokenizer()
+    rwkv_tokenizer = get_rwkv_tokenizer()
+
+    qwen_boundaries = get_tokenizer_boundaries(text, qwen_tokenizer, is_rwkv=False)
+    rwkv_boundaries = get_tokenizer_boundaries(text, rwkv_tokenizer, is_rwkv=True)
+
+    # Find common boundaries (intersection)
+    common_boundaries = qwen_boundaries & rwkv_boundaries
+
+    return sorted(common_boundaries)
 
 
 def load_results(file_path: str) -> dict:
@@ -137,10 +293,29 @@ def calculate_text_layout(
     # Use 95th percentile instead of max to avoid extreme outliers dominating the color range
     deviations = [d - avg_delta for d in deltas]
     abs_deviations = [abs(dev) for dev in deviations]
-    max_deviation = float(np.percentile(abs_deviations, 95)) if abs_deviations else 0
+    max_deviation = float(np.percentile(abs_deviations, 100)) if abs_deviations else 0
     max_deviation = max(max_deviation, 1e-6)  # Avoid division by zero
 
-    # Build character info with colors
+    # Get common boundaries from both tokenizers
+    token_info = get_token_info_for_text(text)
+    common_boundaries = token_info['common_boundaries']
+
+    # Build a mapping from byte position to token color
+    byte_to_color = {}
+    for i in range(len(common_boundaries) - 1):
+        start_byte = common_boundaries[i]
+        end_byte = common_boundaries[i + 1]
+
+        # Calculate average delta for this token
+        token_deltas = deltas[start_byte:end_byte]
+        avg_token_delta = sum(token_deltas) / len(token_deltas) if token_deltas else 0
+        color = delta_to_color(avg_token_delta, avg_delta, max_deviation)
+
+        # Assign this color to all bytes in the token
+        for b in range(start_byte, end_byte):
+            byte_to_color[b] = color
+
+    # Build character info with colors (using token-based colors)
     chars_with_colors = []
     byte_index = 0
 
@@ -148,11 +323,8 @@ def calculate_text_layout(
         char_bytes = char.encode("utf-8")
         num_bytes = len(char_bytes)
 
-        # Average delta for this character's bytes
-        char_deltas = deltas[byte_index:byte_index + num_bytes]
-        avg_char_delta = sum(char_deltas) / len(char_deltas) if char_deltas else 0
-
-        color = delta_to_color(avg_char_delta, avg_delta, max_deviation)
+        # Use the color from the first byte of this character
+        color = byte_to_color.get(byte_index, (255, 255, 255))
         chars_with_colors.append({"char": char, "color": color})
 
         byte_index += num_bytes
@@ -324,7 +496,6 @@ def generate_html(
     output_path: str,
 ):
     """Generate an HTML file for visualization with word linking on hover."""
-    import re
 
     # Calculate deltas
     deltas = [a - b for a, b in zip(byte_losses_a, byte_losses_b)]
@@ -333,38 +504,66 @@ def generate_html(
     # Calculate max deviation (95th percentile)
     deviations = [d - avg_delta for d in deltas]
     abs_deviations = [abs(dev) for dev in deviations]
-    max_deviation = float(np.percentile(abs_deviations, 95)) if abs_deviations else 0
+    max_deviation = float(np.percentile(abs_deviations, 100)) if abs_deviations else 0
     max_deviation = max(max_deviation, 1e-6)
 
     # Calculate average losses
     avg_loss_a = sum(byte_losses_a) / len(byte_losses_a) if byte_losses_a else 0
     avg_loss_b = sum(byte_losses_b) / len(byte_losses_b) if byte_losses_b else 0
 
-    # Tokenize text into words and non-words, tracking byte positions
-    # A "word" is a sequence of alphanumeric characters (including Unicode letters)
+    # Get token info from both tokenizers
+    text_bytes = text.encode("utf-8")
+    token_info = get_token_info_for_text(text)
+    common_boundaries = token_info['common_boundaries']
+    qwen_tokens = token_info['qwen_tokens']
+    rwkv_tokens = token_info['rwkv_tokens']
+
+    # Build byte position to token mapping for both tokenizers
+    def get_tokens_for_range(byte_start, byte_end, token_list):
+        """Find which tokens overlap with the given byte range."""
+        result = []
+        for idx, (t_start, t_end, t_str) in enumerate(token_list):
+            if t_start < byte_end and t_end > byte_start:
+                result.append((idx, t_str))
+        return result
+
+    # Build tokens based on common boundaries
     tokens = []
-    byte_index = 0
-    char_index = 0
+    for i in range(len(common_boundaries) - 1):
+        start_byte = common_boundaries[i]
+        end_byte = common_boundaries[i + 1]
+        token_bytes = text_bytes[start_byte:end_byte]
+        try:
+            token_text = token_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            # If we can't decode, skip this segment
+            continue
 
-    # Use regex to split into words and non-words
-    pattern = re.compile(r'(\w+)', re.UNICODE)
-    last_end = 0
+        # Get corresponding tokens from both tokenizers
+        qwen_toks = get_tokens_for_range(start_byte, end_byte, qwen_tokens)
+        rwkv_toks = get_tokens_for_range(start_byte, end_byte, rwkv_tokens)
 
-    for match in pattern.finditer(text):
-        # Add non-word characters before this match
-        if match.start() > last_end:
-            non_word = text[last_end:match.start()]
-            tokens.append({'type': 'non-word', 'text': non_word, 'char_start': last_end})
-
-        # Add the word
-        word = match.group(1)
-        tokens.append({'type': 'word', 'text': word, 'char_start': match.start(), 'word_lower': word.lower()})
-        last_end = match.end()
-
-    # Add remaining non-word characters
-    if last_end < len(text):
-        non_word = text[last_end:]
-        tokens.append({'type': 'non-word', 'text': non_word, 'char_start': last_end})
+        # Determine if this token is a "word" (alphanumeric) or non-word
+        # A word contains at least one alphanumeric character
+        if re.search(r'\w', token_text, re.UNICODE):
+            tokens.append({
+                'type': 'word',
+                'text': token_text,
+                'byte_start': start_byte,
+                'byte_end': end_byte,
+                'word_lower': token_text.lower(),
+                'qwen_tokens': qwen_toks,
+                'rwkv_tokens': rwkv_toks,
+            })
+        else:
+            tokens.append({
+                'type': 'non-word',
+                'text': token_text,
+                'byte_start': start_byte,
+                'byte_end': end_byte,
+                'qwen_tokens': qwen_toks,
+                'rwkv_tokens': rwkv_toks,
+            })
 
     # Track word occurrences for linking
     word_occurrences = {}  # word_lower -> list of token indices
@@ -381,23 +580,41 @@ def generate_html(
 
     # Build HTML content
     html_content = []
-    byte_index = 0
+
+    def escape_for_attr(s):
+        """Escape string for use in HTML attribute."""
+        return s.replace('&', '&amp;').replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
 
     for token in tokens:
         token_text = token['text']
+        byte_start = token['byte_start']
+        byte_end = token['byte_end']
+
+        # Build token info strings for tooltip
+        qwen_info = ', '.join([f'[{idx}] {repr(s)}' for idx, s in token['qwen_tokens']])
+        rwkv_info = ', '.join([f'[{idx}] {repr(s)}' for idx, s in token['rwkv_tokens']])
+
+        # Get raw bytes and per-byte losses for this token
+        raw_bytes = list(text_bytes[byte_start:byte_end])
+        losses_a = byte_losses_a[byte_start:byte_end]
+        losses_b = byte_losses_b[byte_start:byte_end]
+
+        # Format byte-wise data for tooltip
+        bytes_str = ' '.join([f'{b:02x}' for b in raw_bytes])
+        losses_a_str = ' '.join([f'{l:.2f}' for l in losses_a])
+        losses_b_str = ' '.join([f'{l:.2f}' for l in losses_b])
+
+        # Calculate average delta for the entire token (not per character)
+        token_deltas = deltas[byte_start:byte_end]
+        avg_token_delta = sum(token_deltas) / len(token_deltas) if token_deltas else 0
+
+        # Get single color for the entire token
+        color = delta_to_color(avg_token_delta, avg_delta, max_deviation)
+        r, g, b = color
+
+        # Build HTML for each character with the SAME color
         token_html_parts = []
-
         for char in token_text:
-            char_bytes = char.encode("utf-8")
-            num_bytes = len(char_bytes)
-
-            # Average delta for this character's bytes
-            char_deltas = deltas[byte_index:byte_index + num_bytes]
-            avg_char_delta = sum(char_deltas) / len(char_deltas) if char_deltas else 0
-
-            color = delta_to_color(avg_char_delta, avg_delta, max_deviation)
-            r, g, b = color
-
             # Escape HTML special characters
             if char == '<':
                 escaped_char = '&lt;'
@@ -414,8 +631,19 @@ def generate_html(
             else:
                 escaped_char = char
 
-            token_html_parts.append(f'<span style="background-color: rgb({r},{g},{b})">{escaped_char}</span>')
-            byte_index += num_bytes
+            token_html_parts.append(escaped_char)
+
+        # Wrap in token-span with tokenizer info for hover
+        token_span_content = ''.join(token_html_parts)
+        data_attrs = (
+            f'data-qwen="{escape_for_attr(qwen_info)}" '
+            f'data-rwkv="{escape_for_attr(rwkv_info)}" '
+            f'data-bytes="{escape_for_attr(bytes_str)}" '
+            f'data-loss-a="{escape_for_attr(losses_a_str)}" '
+            f'data-loss-b="{escape_for_attr(losses_b_str)}" '
+            f'data-delta="{avg_token_delta:.6f}"'
+        )
+        style_attr = f'style="background-color: rgb({r},{g},{b})"'
 
         # Wrap words in a word-span for hover interaction
         if token['type'] == 'word':
@@ -425,14 +653,14 @@ def generate_html(
             if len(occurrences) > 1:
                 word_id = token['word_id']
                 html_content.append(
-                    f'<span class="word" data-word="{word_lower}" data-word-id="{word_id}">'
-                    + ''.join(token_html_parts)
+                    f'<span class="token word" {data_attrs} {style_attr} data-word="{word_lower}" data-word-id="{word_id}">'
+                    + token_span_content
                     + '</span>'
                 )
             else:
-                html_content.extend(token_html_parts)
+                html_content.append(f'<span class="token" {data_attrs} {style_attr}>{token_span_content}</span>')
         else:
-            html_content.extend(token_html_parts)
+            html_content.append(f'<span class="token" {data_attrs} {style_attr}>{token_span_content}</span>')
 
     # Determine delta color for header
     delta_color = "#64ff64" if avg_delta < 0 else "#ff6464"
@@ -527,10 +755,54 @@ def generate_html(
             fill: #007bff;
             opacity: 0.8;
         }}
+        .token {{
+            position: relative;
+            cursor: help;
+        }}
+        .token:hover {{
+            outline: 1px dashed #666;
+        }}
+        #tooltip {{
+            position: fixed;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            max-width: 400px;
+            z-index: 2000;
+            pointer-events: none;
+            display: none;
+            line-height: 1.6;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }}
+        #tooltip .label {{
+            color: #aaa;
+            font-weight: bold;
+        }}
+        #tooltip .bytes {{
+            color: #a5f3fc;
+            font-family: monospace;
+        }}
+        #tooltip .loss-a {{
+            color: #86efac;
+            font-family: monospace;
+        }}
+        #tooltip .loss-b {{
+            color: #fca5a5;
+            font-family: monospace;
+        }}
+        #tooltip .qwen {{
+            color: #7dd3fc;
+        }}
+        #tooltip .rwkv {{
+            color: #fcd34d;
+        }}
     </style>
 </head>
 <body>
     <svg id="svg-overlay"></svg>
+    <div id="tooltip"></div>
     <div class="header">
         <h1>Sample {sample_index} - Byte-wise Loss Comparison</h1>
         <div class="meta">
@@ -554,7 +826,9 @@ def generate_html(
                 <span>Worse than avg</span>
             </div>
             <div class="legend-item" style="margin-left: 20px;">
-                <span style="color: #aaa;">Hover on repeated words to see connections</span>
+                <span style="color: #aaa;">Saturation:</span>
+                <input type="range" id="saturation-slider" min="500" max="1000" value="1000" step="1" style="width: 200px; vertical-align: middle;">
+                <span id="saturation-value" style="color: #fff; min-width: 45px; display: inline-block;">100.0%</span>
             </div>
         </div>
     </div>
@@ -643,6 +917,98 @@ def generate_html(
 
         // Clear lines on scroll (positions change)
         window.addEventListener('scroll', clearLines);
+
+        // Tooltip functionality for token info
+        const tooltip = document.getElementById('tooltip');
+        const tokenSpans = document.querySelectorAll('.token');
+
+        tokenSpans.forEach(token => {{
+            token.addEventListener('mouseenter', (e) => {{
+                const qwen = token.getAttribute('data-qwen') || 'N/A';
+                const rwkv = token.getAttribute('data-rwkv') || 'N/A';
+                const bytes = token.getAttribute('data-bytes') || '';
+                const lossA = token.getAttribute('data-loss-a') || '';
+                const lossB = token.getAttribute('data-loss-b') || '';
+
+                tooltip.innerHTML = `
+                    <div><span class="label">Bytes:</span> <span class="bytes">${{bytes || '(empty)'}}</span></div>
+                    <div><span class="label">Loss A:</span> <span class="loss-a">${{lossA || '(empty)'}}</span></div>
+                    <div><span class="label">Loss B:</span> <span class="loss-b">${{lossB || '(empty)'}}</span></div>
+                    <hr style="border-color: #555; margin: 6px 0;">
+                    <div><span class="label">Qwen:</span> <span class="qwen">${{qwen || '(empty)'}}</span></div>
+                    <div><span class="label">RWKV:</span> <span class="rwkv">${{rwkv || '(empty)'}}</span></div>
+                `;
+                tooltip.style.display = 'block';
+            }});
+
+            token.addEventListener('mousemove', (e) => {{
+                const x = e.clientX + 15;
+                const y = e.clientY + 15;
+                tooltip.style.left = x + 'px';
+                tooltip.style.top = y + 'px';
+            }});
+
+            token.addEventListener('mouseleave', () => {{
+                tooltip.style.display = 'none';
+            }});
+        }});
+
+        // Saturation slider functionality
+        const avgDelta = {avg_delta};
+        const slider = document.getElementById('saturation-slider');
+        const saturationValue = document.getElementById('saturation-value');
+
+        // Collect all deltas for percentile calculation
+        const allDeltas = [];
+        tokenSpans.forEach(token => {{
+            const delta = parseFloat(token.getAttribute('data-delta'));
+            if (!isNaN(delta)) allDeltas.push(delta);
+        }});
+
+        function percentile(arr, p) {{
+            const sorted = [...arr].sort((a, b) => a - b);
+            const idx = (p / 100) * (sorted.length - 1);
+            const lower = Math.floor(idx);
+            const upper = Math.ceil(idx);
+            if (lower === upper) return sorted[lower];
+            return sorted[lower] + (sorted[upper] - sorted[lower]) * (idx - lower);
+        }}
+
+        function deltaToColor(delta, avgDelta, maxDeviation) {{
+            if (maxDeviation === 0) return 'rgb(255, 255, 255)';
+            const deviation = delta - avgDelta;
+            let normalized = Math.max(-1, Math.min(1, deviation / maxDeviation));
+            let r, g, b;
+            if (normalized < 0) {{
+                const intensity = -normalized;
+                r = Math.round(255 * (1 - intensity * 0.7));
+                g = 255;
+                b = Math.round(255 * (1 - intensity * 0.7));
+            }} else {{
+                const intensity = normalized;
+                r = 255;
+                g = Math.round(255 * (1 - intensity * 0.7));
+                b = Math.round(255 * (1 - intensity * 0.7));
+            }}
+            return `rgb(${{r}}, ${{g}}, ${{b}})`;
+        }}
+
+        function updateColors(percentileValue) {{
+            const deviations = allDeltas.map(d => Math.abs(d - avgDelta));
+            const maxDeviation = Math.max(percentile(deviations, percentileValue), 1e-6);
+            tokenSpans.forEach(token => {{
+                const delta = parseFloat(token.getAttribute('data-delta'));
+                if (!isNaN(delta)) {{
+                    token.style.backgroundColor = deltaToColor(delta, avgDelta, maxDeviation);
+                }}
+            }});
+        }}
+
+        slider.addEventListener('input', (e) => {{
+            const val = parseInt(e.target.value) / 10;
+            saturationValue.textContent = val.toFixed(1) + '%';
+            updateColors(val);
+        }});
     </script>
 </body>
 </html>
