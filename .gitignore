@@ -17,3 +17,5 @@ CLAUDE.local.md
 .claude/
 
 !support/uncheatable_eval_dev.jsonl
+
+visualizations/

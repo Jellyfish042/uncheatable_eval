@@ -46,7 +46,8 @@ def get_rwkv_tokenizer():
     if _rwkv_tokenizer is None:
         from rwkv.utils import PIPELINE
         from rwkv.rwkv_tokenizer import TRIE_TOKENIZER
-        _rwkv_tokenizer = TRIE_TOKENIZER("rwkv_vocab_v20230424.txt")
+
+        _rwkv_tokenizer = TRIE_TOKENIZER("support/rwkv_vocab_v20230424.txt")
     return _rwkv_tokenizer
 
 
@@ -150,11 +151,11 @@ def get_token_info_for_text(text: str) -> dict:
     common_boundaries = sorted(qwen_boundaries & rwkv_boundaries)
 
     return {
-        'common_boundaries': common_boundaries,
-        'qwen_tokens': qwen_tokens,
-        'rwkv_tokens': rwkv_tokens,
-        'byte_to_qwen': byte_to_qwen,
-        'byte_to_rwkv': byte_to_rwkv,
+        "common_boundaries": common_boundaries,
+        "qwen_tokens": qwen_tokens,
+        "rwkv_tokens": rwkv_tokens,
+        "byte_to_qwen": byte_to_qwen,
+        "byte_to_rwkv": byte_to_rwkv,
     }
 
 
@@ -193,7 +194,7 @@ def extract_model_name(model_path: str) -> str:
     # Remove common extensions
     for ext in [".pth", ".bin", ".safetensors", ".ckpt", ".pt"]:
         if name.endswith(ext):
-            name = name[:-len(ext)]
+            name = name[: -len(ext)]
             break
     return name
 
@@ -280,10 +281,8 @@ def calculate_text_layout(
     """
     text_bytes = text.encode("utf-8")
 
-    assert len(text_bytes) == len(byte_losses_a), \
-        f"Text bytes ({len(text_bytes)}) != model A losses ({len(byte_losses_a)})"
-    assert len(text_bytes) == len(byte_losses_b), \
-        f"Text bytes ({len(text_bytes)}) != model B losses ({len(byte_losses_b)})"
+    assert len(text_bytes) == len(byte_losses_a), f"Text bytes ({len(text_bytes)}) != model A losses ({len(byte_losses_a)})"
+    assert len(text_bytes) == len(byte_losses_b), f"Text bytes ({len(text_bytes)}) != model B losses ({len(byte_losses_b)})"
 
     # Calculate deltas
     deltas = [a - b for a, b in zip(byte_losses_a, byte_losses_b)]
@@ -298,7 +297,7 @@ def calculate_text_layout(
 
     # Get common boundaries from both tokenizers
     token_info = get_token_info_for_text(text)
-    common_boundaries = token_info['common_boundaries']
+    common_boundaries = token_info["common_boundaries"]
 
     # Build a mapping from byte position to token color
     byte_to_color = {}
@@ -354,13 +353,15 @@ def calculate_text_layout(
         if char == "\t":
             char = "    "  # Replace tab with 4 spaces
 
-        for c in (char if char == "    " else [char]):
-            current_line.append({
-                "char": c if c != "    " else " ",
-                "color": color,
-                "x": x,
-                "y": y,
-            })
+        for c in char if char == "    " else [char]:
+            current_line.append(
+                {
+                    "char": c if c != "    " else " ",
+                    "color": color,
+                    "x": x,
+                    "y": y,
+                }
+            )
             x += char_width
             max_x = max(max_x, x)
 
@@ -396,7 +397,10 @@ def generate_image(
 
     # Calculate layout
     lines, avg_delta, max_delta, content_width, content_height = calculate_text_layout(
-        text, byte_losses_a, byte_losses_b, font,
+        text,
+        byte_losses_a,
+        byte_losses_b,
+        font,
         max_width=max_width,
         line_height=int(line_height),
         char_width=int(char_width),
@@ -493,9 +497,79 @@ def generate_html(
     byte_losses_b: List[float],
     model_a_name: str,
     model_b_name: str,
-    output_path: str,
-):
+    output_path: Optional[str] = None,
+    topk_predictions_a: Optional[List] = None,
+    topk_predictions_b: Optional[List] = None,
+    tokenizer_a=None,
+    tokenizer_b=None,
+    model_type_a: str = "hf",
+    model_type_b: str = "hf",
+) -> str:
     """Generate an HTML file for visualization with word linking on hover."""
+
+    # Helper function to decode token ID using the correct tokenizer
+    def decode_token(token_id: int, tokenizer, model_type: str) -> str:
+        if tokenizer is None:
+            return f"[{token_id}]"
+        try:
+            if model_type in ["rwkv", "rwkv7"]:
+                return tokenizer.decode([token_id])
+            else:
+                return tokenizer.decode([token_id])
+        except:
+            return f"[{token_id}]"
+
+    # Helper function to build byte position to token index mapping
+    def build_byte_to_token_map(text: str, tokenizer, model_type: str):
+        """Build mapping from byte position to token index using the correct tokenizer.
+        Returns a list of (start, end, token_idx) tuples for range-based lookup."""
+        if tokenizer is None:
+            return []
+
+        token_ranges = []
+
+        try:
+            if model_type in ["rwkv", "rwkv7"]:
+                # RWKV tokenizer
+                tokenized = tokenizer.encode(text)
+                if hasattr(tokenized, "ids"):
+                    token_ids = tokenized.ids
+                else:
+                    token_ids = tokenized
+
+                byte_pos = 0
+                for idx, token_id in enumerate(token_ids):
+                    try:
+                        token_bytes = tokenizer.decodeBytes([token_id])
+                        token_ranges.append((byte_pos, byte_pos + len(token_bytes), idx))
+                        byte_pos += len(token_bytes)
+                    except:
+                        pass
+            else:
+                # HuggingFace tokenizer - use TokenizerBytesConverter
+                from helpers import TokenizerBytesConverter
+
+                tokenizer_name = getattr(tokenizer, "name_or_path", None)
+                if tokenizer_name:
+                    converter = TokenizerBytesConverter(tokenizer_name, trust_remote_code=True)
+                    token_bytes_list = converter.encode_to_bytes(text)
+                    byte_pos = 0
+                    for idx, token_bytes in enumerate(token_bytes_list):
+                        token_ranges.append((byte_pos, byte_pos + len(token_bytes), idx))
+                        byte_pos += len(token_bytes)
+        except Exception as e:
+            print(f"Warning: Could not build byte-to-token map ({model_type}): {e}")
+            return []
+
+        return token_ranges
+
+    # Helper function to find token index for a byte position
+    def find_token_for_byte(byte_pos: int, token_ranges):
+        """Find the token index that contains the given byte position."""
+        for start, end, idx in token_ranges:
+            if start <= byte_pos < end:
+                return idx
+        return None
 
     # Calculate deltas
     deltas = [a - b for a, b in zip(byte_losses_a, byte_losses_b)]
@@ -511,12 +585,17 @@ def generate_html(
     avg_loss_a = sum(byte_losses_a) / len(byte_losses_a) if byte_losses_a else 0
     avg_loss_b = sum(byte_losses_b) / len(byte_losses_b) if byte_losses_b else 0
 
-    # Get token info from both tokenizers
+    # Get token info from both tokenizers (for display purposes)
     text_bytes = text.encode("utf-8")
     token_info = get_token_info_for_text(text)
-    common_boundaries = token_info['common_boundaries']
-    qwen_tokens = token_info['qwen_tokens']
-    rwkv_tokens = token_info['rwkv_tokens']
+    common_boundaries = token_info["common_boundaries"]
+    qwen_tokens = token_info["qwen_tokens"]
+    rwkv_tokens = token_info["rwkv_tokens"]
+
+    # Build byte position to token index mapping for topk predictions
+    # Use the ACTUAL tokenizers passed in, not the fixed Qwen/RWKV tokenizers
+    model_a_token_ranges = build_byte_to_token_map(text, tokenizer_a, model_type_a)
+    model_b_token_ranges = build_byte_to_token_map(text, tokenizer_b, model_type_b)
 
     # Build byte position to token mapping for both tokenizers
     def get_tokens_for_range(byte_start, byte_end, token_list):
@@ -545,37 +624,41 @@ def generate_html(
 
         # Determine if this token is a "word" (alphanumeric) or non-word
         # A word contains at least one alphanumeric character
-        if re.search(r'\w', token_text, re.UNICODE):
-            tokens.append({
-                'type': 'word',
-                'text': token_text,
-                'byte_start': start_byte,
-                'byte_end': end_byte,
-                'word_lower': token_text.lower(),
-                'qwen_tokens': qwen_toks,
-                'rwkv_tokens': rwkv_toks,
-            })
+        if re.search(r"\w", token_text, re.UNICODE):
+            tokens.append(
+                {
+                    "type": "word",
+                    "text": token_text,
+                    "byte_start": start_byte,
+                    "byte_end": end_byte,
+                    "word_lower": token_text.lower(),
+                    "qwen_tokens": qwen_toks,
+                    "rwkv_tokens": rwkv_toks,
+                }
+            )
         else:
-            tokens.append({
-                'type': 'non-word',
-                'text': token_text,
-                'byte_start': start_byte,
-                'byte_end': end_byte,
-                'qwen_tokens': qwen_toks,
-                'rwkv_tokens': rwkv_toks,
-            })
+            tokens.append(
+                {
+                    "type": "non-word",
+                    "text": token_text,
+                    "byte_start": start_byte,
+                    "byte_end": end_byte,
+                    "qwen_tokens": qwen_toks,
+                    "rwkv_tokens": rwkv_toks,
+                }
+            )
 
     # Track word occurrences for linking
     word_occurrences = {}  # word_lower -> list of token indices
     word_id_counter = 0
 
     for i, token in enumerate(tokens):
-        if token['type'] == 'word':
-            word_lower = token['word_lower']
+        if token["type"] == "word":
+            word_lower = token["word_lower"]
             if word_lower not in word_occurrences:
                 word_occurrences[word_lower] = []
             word_occurrences[word_lower].append(i)
-            token['word_id'] = word_id_counter
+            token["word_id"] = word_id_counter
             word_id_counter += 1
 
     # Build HTML content
@@ -583,16 +666,16 @@ def generate_html(
 
     def escape_for_attr(s):
         """Escape string for use in HTML attribute."""
-        return s.replace('&', '&amp;').replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
+        return s.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
     for token in tokens:
-        token_text = token['text']
-        byte_start = token['byte_start']
-        byte_end = token['byte_end']
+        token_text = token["text"]
+        byte_start = token["byte_start"]
+        byte_end = token["byte_end"]
 
         # Build token info strings for tooltip
-        qwen_info = ', '.join([f'[{idx}] {repr(s)}' for idx, s in token['qwen_tokens']])
-        rwkv_info = ', '.join([f'[{idx}] {repr(s)}' for idx, s in token['rwkv_tokens']])
+        qwen_info = ", ".join([f"[{idx}] {repr(s)}" for idx, s in token["qwen_tokens"]])
+        rwkv_info = ", ".join([f"[{idx}] {repr(s)}" for idx, s in token["rwkv_tokens"]])
 
         # Get raw bytes and per-byte losses for this token
         raw_bytes = list(text_bytes[byte_start:byte_end])
@@ -600,9 +683,30 @@ def generate_html(
         losses_b = byte_losses_b[byte_start:byte_end]
 
         # Format byte-wise data for tooltip
-        bytes_str = ' '.join([f'{b:02x}' for b in raw_bytes])
-        losses_a_str = ' '.join([f'{l:.2f}' for l in losses_a])
-        losses_b_str = ' '.join([f'{l:.2f}' for l in losses_b])
+        bytes_str = " ".join([f"{b:02x}" for b in raw_bytes])
+        losses_a_str = " ".join([f"{l:.2f}" for l in losses_a])
+        losses_b_str = " ".join([f"{l:.2f}" for l in losses_b])
+
+        # Get topk predictions for this token position (if available)
+        # Decode token IDs to text and store in format: [actual_id, rank, [[id, prob, text], ...]]
+        topk_a_json = ""
+        topk_b_json = ""
+        if topk_predictions_a is not None and model_a_token_ranges:
+            model_a_token_idx = find_token_for_byte(byte_start, model_a_token_ranges)
+            if model_a_token_idx is not None and model_a_token_idx < len(topk_predictions_a):
+                pred = topk_predictions_a[model_a_token_idx]
+                decoded_pred = [
+                    pred[0],  # actual_id
+                    pred[1],  # rank
+                    [[tid, prob, decode_token(tid, tokenizer_a, model_type_a)] for tid, prob in pred[2]],
+                ]
+                topk_a_json = json.dumps(decoded_pred, ensure_ascii=False)
+        if topk_predictions_b is not None and model_b_token_ranges:
+            model_b_token_idx = find_token_for_byte(byte_start, model_b_token_ranges)
+            if model_b_token_idx is not None and model_b_token_idx < len(topk_predictions_b):
+                pred = topk_predictions_b[model_b_token_idx]
+                decoded_pred = [pred[0], pred[1], [[tid, prob, decode_token(tid, tokenizer_b, model_type_b)] for tid, prob in pred[2]]]
+                topk_b_json = json.dumps(decoded_pred, ensure_ascii=False)
 
         # Calculate average delta for the entire token (not per character)
         token_deltas = deltas[byte_start:byte_end]
@@ -616,46 +720,48 @@ def generate_html(
         token_html_parts = []
         for char in token_text:
             # Escape HTML special characters
-            if char == '<':
-                escaped_char = '&lt;'
-            elif char == '>':
-                escaped_char = '&gt;'
-            elif char == '&':
-                escaped_char = '&amp;'
-            elif char == '\n':
-                escaped_char = '<br>'
-            elif char == ' ':
-                escaped_char = '&nbsp;'
-            elif char == '\t':
-                escaped_char = '&nbsp;&nbsp;&nbsp;&nbsp;'
+            if char == "<":
+                escaped_char = "&lt;"
+            elif char == ">":
+                escaped_char = "&gt;"
+            elif char == "&":
+                escaped_char = "&amp;"
+            elif char == "\n":
+                escaped_char = "<br>"
+            elif char == " ":
+                escaped_char = "&nbsp;"
+            elif char == "\t":
+                escaped_char = "&nbsp;&nbsp;&nbsp;&nbsp;"
             else:
                 escaped_char = char
 
             token_html_parts.append(escaped_char)
 
         # Wrap in token-span with tokenizer info for hover
-        token_span_content = ''.join(token_html_parts)
+        token_span_content = "".join(token_html_parts)
         data_attrs = (
             f'data-qwen="{escape_for_attr(qwen_info)}" '
             f'data-rwkv="{escape_for_attr(rwkv_info)}" '
             f'data-bytes="{escape_for_attr(bytes_str)}" '
             f'data-loss-a="{escape_for_attr(losses_a_str)}" '
             f'data-loss-b="{escape_for_attr(losses_b_str)}" '
-            f'data-delta="{avg_token_delta:.6f}"'
+            f'data-delta="{avg_token_delta:.6f}" '
+            f'data-topk-a="{escape_for_attr(topk_a_json)}" '
+            f'data-topk-b="{escape_for_attr(topk_b_json)}"'
         )
         style_attr = f'style="background-color: rgb({r},{g},{b})"'
 
         # Wrap words in a word-span for hover interaction
-        if token['type'] == 'word':
-            word_lower = token['word_lower']
+        if token["type"] == "word":
+            word_lower = token["word_lower"]
             occurrences = word_occurrences[word_lower]
             # Only add linking if word appears more than once
             if len(occurrences) > 1:
-                word_id = token['word_id']
+                word_id = token["word_id"]
                 html_content.append(
                     f'<span class="token word" {data_attrs} {style_attr} data-word="{word_lower}" data-word-id="{word_id}">'
                     + token_span_content
-                    + '</span>'
+                    + "</span>"
                 )
             else:
                 html_content.append(f'<span class="token" {data_attrs} {style_attr}>{token_span_content}</span>')
@@ -769,7 +875,7 @@ def generate_html(
             padding: 10px 14px;
             border-radius: 6px;
             font-size: 12px;
-            max-width: 400px;
+            max-width: 500px;
             z-index: 2000;
             pointer-events: none;
             display: none;
@@ -797,6 +903,67 @@ def generate_html(
         }}
         #tooltip .rwkv {{
             color: #fcd34d;
+        }}
+        #tooltip .topk-section {{
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #555;
+        }}
+        #tooltip .topk-container {{
+            display: flex;
+            gap: 16px;
+        }}
+        #tooltip .topk-column {{
+            flex: 1;
+            min-width: 180px;
+        }}
+        #tooltip .topk-title {{
+            color: #aaa;
+            font-weight: bold;
+            margin-bottom: 4px;
+            font-size: 11px;
+        }}
+        #tooltip .topk-title.model-a {{
+            color: #86efac;
+        }}
+        #tooltip .topk-title.model-b {{
+            color: #fca5a5;
+        }}
+        #tooltip .topk-list {{
+            font-size: 11px;
+        }}
+        #tooltip .topk-item {{
+            display: flex;
+            gap: 4px;
+            padding: 1px 0;
+            align-items: center;
+        }}
+        #tooltip .topk-rank {{
+            color: #888;
+            min-width: 18px;
+        }}
+        #tooltip .topk-rank.hit {{
+            color: #ffd700;
+        }}
+        #tooltip .topk-token {{
+            color: #a5f3fc;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: monospace;
+        }}
+        #tooltip .topk-prob {{
+            color: #86efac;
+            min-width: 45px;
+            text-align: right;
+        }}
+        #tooltip .topk-hit {{
+            color: #22c55e;
+        }}
+        #tooltip .topk-miss {{
+            color: #ef4444;
+            font-style: italic;
         }}
     </style>
 </head>
@@ -929,8 +1096,42 @@ def generate_html(
                 const bytes = token.getAttribute('data-bytes') || '';
                 const lossA = token.getAttribute('data-loss-a') || '';
                 const lossB = token.getAttribute('data-loss-b') || '';
+                const top5A = token.getAttribute('data-topk-a') || '';
+                const top5B = token.getAttribute('data-topk-b') || '';
 
-                tooltip.innerHTML = `
+                // Function to format topk predictions for one model
+                function formatTopkColumn(topkJson, modelName, titleClass) {{
+                    if (!topkJson) return '<div class="topk-column"><div class="topk-title ' + titleClass + '">' + modelName + '</div><div class="topk-list">N/A</div></div>';
+                    try {{
+                        const data = JSON.parse(topkJson);
+                        const [actualId, rank, topkList] = data;
+                        let html = '<div class="topk-column">';
+                        html += '<div class="topk-title ' + titleClass + '">' + modelName + '</div>';
+                        html += '<div class="topk-list">';
+                        topkList.forEach((item, idx) => {{
+                            const [tokenId, prob, tokenText] = item;
+                            const isHit = tokenId === actualId;
+                            const rankClass = isHit ? 'topk-rank hit' : 'topk-rank';
+                            const displayText = tokenText || '[' + tokenId + ']';
+                            const escapedText = displayText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            html += '<div class="topk-item">';
+                            html += '<span class="' + rankClass + '">' + (idx + 1) + '.</span>';
+                            html += '<span class="topk-token" title="ID: ' + tokenId + '">' + escapedText + '</span>';
+                            html += '<span class="topk-prob">' + (prob * 100).toFixed(1) + '%</span>';
+                            if (isHit) html += '<span class="topk-hit">✓</span>';
+                            html += '</div>';
+                        }});
+                        if (rank > 10) {{
+                            html += '<div class="topk-item topk-miss">Actual rank: ' + rank + '</div>';
+                        }}
+                        html += '</div></div>';
+                        return html;
+                    }} catch (e) {{
+                        return '<div class="topk-column"><div class="topk-title ' + titleClass + '">' + modelName + '</div><div class="topk-list">Error</div></div>';
+                    }}
+                }}
+
+                let tooltipHtml = `
                     <div><span class="label">Bytes:</span> <span class="bytes">${{bytes || '(empty)'}}</span></div>
                     <div><span class="label">Loss A:</span> <span class="loss-a">${{lossA || '(empty)'}}</span></div>
                     <div><span class="label">Loss B:</span> <span class="loss-b">${{lossB || '(empty)'}}</span></div>
@@ -938,12 +1139,37 @@ def generate_html(
                     <div><span class="label">Qwen:</span> <span class="qwen">${{qwen || '(empty)'}}</span></div>
                     <div><span class="label">RWKV:</span> <span class="rwkv">${{rwkv || '(empty)'}}</span></div>
                 `;
+                // Add topk predictions side by side
+                if (top5A || top5B) {{
+                    tooltipHtml += '<div class="topk-section"><div class="topk-container">';
+                    tooltipHtml += formatTopkColumn(top5A, 'Model A Top10', 'model-a');
+                    tooltipHtml += formatTopkColumn(top5B, 'Model B Top10', 'model-b');
+                    tooltipHtml += '</div></div>';
+                }}
+                tooltip.innerHTML = tooltipHtml;
                 tooltip.style.display = 'block';
             }});
 
             token.addEventListener('mousemove', (e) => {{
-                const x = e.clientX + 15;
-                const y = e.clientY + 15;
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+
+                let x = e.clientX + 15;
+                let y = e.clientY + 15;
+
+                // Check right boundary
+                if (x + tooltipRect.width > viewportWidth - 10) {{
+                    x = e.clientX - tooltipRect.width - 15;
+                }}
+                // Check bottom boundary
+                if (y + tooltipRect.height > viewportHeight - 10) {{
+                    y = e.clientY - tooltipRect.height - 15;
+                }}
+                // Ensure not going off left or top
+                if (x < 10) x = 10;
+                if (y < 10) y = 10;
+
                 tooltip.style.left = x + 'px';
                 tooltip.style.top = y + 'px';
             }});
@@ -1014,8 +1240,11 @@ def generate_html(
 </html>
 """
 
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(html)
+    if output_path:
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(html)
+
+    return html
 
 
 def visualize_comparison(
@@ -1025,6 +1254,8 @@ def visualize_comparison(
     sample_index: Optional[int] = None,
     font_size: int = 14,
     max_width: int = 1200,
+    model_type_a: str = "hf",
+    model_type_b: str = "hf",
 ):
     """
     Generate image visualizations comparing two models' byte-wise losses.
@@ -1042,20 +1273,58 @@ def visualize_comparison(
     results_b = load_results(model_b_path)
 
     # Validate
-    assert "single_sample_texts" in results_a, \
-        "Model A results missing 'single_sample_texts'. Enable track_single_sample_byte_wise_data=True"
-    assert "single_sample_texts" in results_b, \
-        "Model B results missing 'single_sample_texts'. Enable track_single_sample_byte_wise_data=True"
+    assert "single_sample_texts" in results_a, "Model A results missing 'single_sample_texts'. Enable track_single_sample_byte_wise_data=True"
+    assert "single_sample_texts" in results_b, "Model B results missing 'single_sample_texts'. Enable track_single_sample_byte_wise_data=True"
 
     texts_a = results_a["single_sample_texts"]
     texts_b = results_b["single_sample_texts"]
     losses_a = results_a["single_sample_byte_wise_losses"]
     losses_b = results_b["single_sample_byte_wise_losses"]
 
-    assert len(texts_a) == len(texts_b), \
-        f"Sample count mismatch: A has {len(texts_a)}, B has {len(texts_b)}"
-    assert texts_a == texts_b, \
-        "Sample texts do not match between models. Ensure same dataset was used."
+    # Load top5 predictions if available
+    top5_a = results_a.get("single_sample_top5_predictions")
+    top5_b = results_b.get("single_sample_top5_predictions")
+
+    # Load tokenizers for decoding topk predictions
+    tokenizer_a = None
+    tokenizer_b = None
+
+    if top5_a is not None:
+        tokenizer_name_a = results_a.get("tokenizer_name")
+        if tokenizer_name_a and model_type_a in ["hf", "mamba", "mistral", "modelscope"]:
+            try:
+                from transformers import AutoTokenizer
+
+                tokenizer_a = AutoTokenizer.from_pretrained(tokenizer_name_a, trust_remote_code=True)
+            except Exception as e:
+                print(f"Warning: Could not load tokenizer for model A: {e}")
+        elif model_type_a in ["rwkv", "rwkv7"]:
+            try:
+                from rwkv.rwkv_tokenizer import TRIE_TOKENIZER
+
+                tokenizer_a = TRIE_TOKENIZER("rwkv_vocab_v20230424.txt")
+            except Exception as e:
+                print(f"Warning: Could not load RWKV tokenizer for model A: {e}")
+
+    if top5_b is not None:
+        tokenizer_name_b = results_b.get("tokenizer_name")
+        if tokenizer_name_b and model_type_b in ["hf", "mamba", "mistral", "modelscope"]:
+            try:
+                from transformers import AutoTokenizer
+
+                tokenizer_b = AutoTokenizer.from_pretrained(tokenizer_name_b, trust_remote_code=True)
+            except Exception as e:
+                print(f"Warning: Could not load tokenizer for model B: {e}")
+        elif model_type_b in ["rwkv", "rwkv7"]:
+            try:
+                from rwkv.rwkv_tokenizer import TRIE_TOKENIZER
+
+                tokenizer_b = TRIE_TOKENIZER("rwkv_vocab_v20230424.txt")
+            except Exception as e:
+                print(f"Warning: Could not load RWKV tokenizer for model B: {e}")
+
+    assert len(texts_a) == len(texts_b), f"Sample count mismatch: A has {len(texts_a)}, B has {len(texts_b)}"
+    assert texts_a == texts_b, "Sample texts do not match between models. Ensure same dataset was used."
 
     # Extract clean model names from paths
     model_a_name = extract_model_name(results_a.get("model_name_or_path", "Model A"))
@@ -1099,6 +1368,12 @@ def visualize_comparison(
             model_a_name=model_a_name,
             model_b_name=model_b_name,
             output_path=html_path,
+            topk_predictions_a=top5_a[idx] if top5_a else None,
+            topk_predictions_b=top5_b[idx] if top5_b else None,
+            tokenizer_a=tokenizer_a,
+            tokenizer_b=tokenizer_b,
+            model_type_a=model_type_a,
+            model_type_b=model_type_b,
         )
 
         print(f"Generated: {png_path}, {html_path}")
@@ -1107,9 +1382,7 @@ def visualize_comparison(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Visualize byte-wise loss comparison between two models"
-    )
+    parser = argparse.ArgumentParser(description="Visualize byte-wise loss comparison between two models")
     parser.add_argument(
         "--model_a",
         type=str,
@@ -1146,6 +1419,18 @@ def main():
         default=1200,
         help="Maximum image width in pixels (default: 1200)",
     )
+    parser.add_argument(
+        "--model_type_a",
+        type=str,
+        default="hf",
+        help="Model type for model A: hf, rwkv, rwkv7 (default: hf)",
+    )
+    parser.add_argument(
+        "--model_type_b",
+        type=str,
+        default="hf",
+        help="Model type for model B: hf, rwkv, rwkv7 (default: hf)",
+    )
 
     args = parser.parse_args()
 
@@ -1156,6 +1441,8 @@ def main():
         sample_index=args.sample_index,
         font_size=args.font_size,
         max_width=args.max_width,
+        model_type_a=args.model_type_a,
+        model_type_b=args.model_type_b,
     )
 
 

@@ -38,7 +38,7 @@ class EvaluationConfig:
     chunk_size: int = 4000  # input tokens will be split into chunks of this size
     batch_size: int = 1  # batch size for inference, batch size > 1 is buggy and not supported yet
     track_byte_wise_data: bool = False  # whether to track byte-wise data
-    track_single_sample_byte_wise_data: bool = False  # whether to track byte-wise data for each individual sample
+    track_single_sample_byte_wise_data: bool = False  # whether to track byte-wise data for each individual sample (also tracks top5 predictions)
 
     def __post_init__(self):
 
@@ -282,6 +282,36 @@ class Evaluator:
         return F.cross_entropy(logits[:-1], target_token_ids[1:], reduction=reduction)
 
     @staticmethod
+    def _extract_topk_predictions(logit, target_ids, k=10):
+        """
+        Extract top-k predictions from logits.
+
+        Args:
+            logit: [seq_length, vocab_size] logit tensor
+            target_ids: [seq_length] actual target token IDs
+            k: number of top predictions to extract (default: 10)
+
+        Returns:
+            list: [[actual_id, rank, [[id1, prob1], [id2, prob2], ...]], ...]
+        """
+        probs = F.softmax(logit, dim=-1)
+        top_probs, top_ids = torch.topk(probs, k, dim=-1)
+
+        results = []
+        for pos in range(logit.shape[0]):
+            target_id = target_ids[pos].item()
+            actual_prob = probs[pos, target_id].item()
+            rank = (probs[pos] > actual_prob).sum().item() + 1
+
+            topk_list = [
+                [top_ids[pos, i].item(), round(top_probs[pos, i].item(), 6)]
+                for i in range(k)
+            ]
+            results.append([target_id, rank, topk_list])
+
+        return results
+
+    @staticmethod
     def count_rwkv_parameters_in_billions(rwkv_model):
         total_params = 0
         if hasattr(rwkv_model, "z"):
@@ -321,6 +351,7 @@ class Evaluator:
         if track_single_sample_byte_wise_data:
             single_sample_texts = []
             single_sample_byte_wise_losses = []
+            single_sample_top5_predictions = []
 
         for idx, sample in tqdm(enumerate(texts), total=len(texts)):
 
@@ -354,6 +385,13 @@ class Evaluator:
             byte_index = 0
             if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
                 token_bytes = [tokenizer.decodeBytes([token]) for token in input_chunk[1:]]
+
+                # Extract topk predictions if enabled
+                if track_single_sample_byte_wise_data:
+                    sample_topk = self._extract_topk_predictions(
+                        logit[:-1], torch.tensor(input_chunk[1:]).cuda()
+                    )
+                    single_sample_top5_predictions.append(sample_topk)
 
                 sample_byte_losses = []  # for single sample tracking
                 for l, byte_values in zip(loss.tolist(), token_bytes):
@@ -395,6 +433,7 @@ class Evaluator:
         if track_single_sample_byte_wise_data:
             data_dict["single_sample_texts"] = single_sample_texts
             data_dict["single_sample_byte_wise_losses"] = single_sample_byte_wise_losses
+            data_dict["single_sample_top5_predictions"] = single_sample_top5_predictions
 
         return data_dict
 
@@ -420,6 +459,7 @@ class Evaluator:
         if track_single_sample_byte_wise_data:
             single_sample_texts = []
             single_sample_byte_wise_losses = []
+            single_sample_top5_predictions = []
 
         for idx, sample in tqdm(enumerate(texts), total=len(texts), desc="Evaluating"):
 
@@ -450,6 +490,13 @@ class Evaluator:
                 #     sample.encode("utf-8")
                 # ), "All bytes are not the same, this model and tokenizer are not compatible with tracking byte-wise data mode"
                 assert len(per_token_bytes) == loss.shape[0], "Number of tokens and loss are not the same"
+
+                # Extract topk predictions if enabled
+                if track_single_sample_byte_wise_data:
+                    sample_topk = self._extract_topk_predictions(
+                        logit[:-1], input_chunk.squeeze(0)[1:]
+                    )
+                    single_sample_top5_predictions.append(sample_topk)
 
                 sample_byte_losses = []  # for single sample tracking
                 for l, byte_values in zip(loss, per_token_bytes):
@@ -495,6 +542,7 @@ class Evaluator:
         if track_single_sample_byte_wise_data:
             data_dict["single_sample_texts"] = single_sample_texts
             data_dict["single_sample_byte_wise_losses"] = single_sample_byte_wise_losses
+            data_dict["single_sample_top5_predictions"] = single_sample_top5_predictions
 
         return data_dict
 
@@ -646,7 +694,7 @@ class Evaluator:
                 self.make_log(results, config.log_path)
 
                 print(f"Finished evaluating {config.model_name_or_path} on {data_name}")
-                skip_keys = {"byte_wise_loss", "byte_wise_counts", "byte_wise_compression_rate", "single_sample_texts", "single_sample_byte_wise_losses"}
+                skip_keys = {"byte_wise_loss", "byte_wise_counts", "byte_wise_compression_rate", "single_sample_texts", "single_sample_byte_wise_losses", "single_sample_top5_predictions"}
                 filtered_results = {k: v for k, v in results.items() if k not in skip_keys}
                 print(json.dumps(filtered_results, indent=4, ensure_ascii=False, default=self.default_serializer))
                 print("-" * 80)
