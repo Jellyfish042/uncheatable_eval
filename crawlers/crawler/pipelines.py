@@ -90,6 +90,27 @@ class MinHashLSHDuplicateFilterPipeline:
         return item
 
 
+class LanguageBalanceCounterPipeline:
+    """
+    Pipeline to accurately count items per language after all filters.
+    Only counts items that have passed all previous filtering pipelines.
+    """
+
+    def process_item(self, item, spider):
+        # Check if spider has language balancing enabled
+        if getattr(spider, 'balance_languages', False):
+            lang = item.get('metadata', {}).get('language')
+            if lang and hasattr(spider, 'language_item_counts'):
+                spider.language_item_counts[lang] += 1
+
+                # Log stats periodically
+                total = sum(spider.language_item_counts.values())
+                if total % 50 == 0:
+                    spider._log_balance_stats()
+
+        return item
+
+
 class JsonWriterPipeline:
     def __init__(self, target=None):
         self.counter = 0
