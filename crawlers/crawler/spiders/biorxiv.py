@@ -1,15 +1,15 @@
 import scrapy
+import json
 import asyncio
-from urllib.parse import urlencode
 from datetime import datetime
 from crawler.items import BiorxivPaperItem
-from crawler.helper import MinerUClient
+from crawler.helper import MinerUClient, PlaywrightPDFDownloader
 import re
 
 
 class BiorxivSpider(scrapy.Spider):
     name = "biorxiv"
-    allowed_domains = ["biorxiv.org"]
+    allowed_domains = ["api.biorxiv.org", "biorxiv.org"]
 
     custom_settings = {
         "ITEM_PIPELINES": {
@@ -20,15 +20,8 @@ class BiorxivSpider(scrapy.Spider):
         "CLOSESPIDER_ITEMCOUNT": 500,
         "LOG_LEVEL": "INFO",
         "CONCURRENT_REQUESTS": 16,
-        "ROTATING_PROXY_BAN_POLICY": "crawler.policy.BiorxivBanPolicy",
-        "DEFAULT_REQUEST_HEADERS": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-        },
-        "DOWNLOAD_DELAY": 3,
-        "COOKIES_ENABLED": True,
-        # 尝试忽略SSL错误（虽然Scrapy默认不忽略，但可以通过自定义ContextFactory，这里先尝试标准设置）
+        "DOWNLOAD_DELAY": 0.5,
+        "COOKIES_ENABLED": False,
     }
 
     def __init__(
@@ -36,7 +29,7 @@ class BiorxivSpider(scrapy.Spider):
         start_date="2025-12-01",
         end_date="2025-12-15",
         classification="all",
-        page_size=200,
+        page_size=100,
         mineru_api="http://0.0.0.0:8000/",
         size_limit=50,
         *args,
@@ -44,198 +37,148 @@ class BiorxivSpider(scrapy.Spider):
     ):
         super(BiorxivSpider, self).__init__(*args, **kwargs)
 
-        # BioRxiv使用统一的subtitle
-        self.subtitle = "biorxiv"
+        self.subtitle = "all"
         self.start_date = start_date
         self.end_date = end_date
         self.classification = classification
         self.page_size = int(page_size)
         self.size_limit = size_limit
         self.mineru_client = MinerUClient(api_url=mineru_api)
-
-    def get_search_url(self, start_idx):
-        """
-        生成BioRxiv搜索URL
-        使用advanced search接口，通过limit_from和limit_to参数指定日期范围
-        """
-        base_url = "https://www.biorxiv.org/search"
-
-        # 构建搜索查询：使用日期范围过滤
-        # BioRxiv的搜索语法：limit_from:YYYY-MM-DD limit_to:YYYY-MM-DD
-        search_query = f"limit_from:{self.start_date} limit_to:{self.end_date}"
-
-        params = {
-            "query": search_query,
-            "sort": "date_posted",  # 按发布日期排序
-            "num_results": str(self.page_size),
-            "start": str(start_idx),
-        }
-
-        # 如果指定了特定分类（非"all"），添加到查询中
-        if self.classification != "all":
-            # 将分类添加到搜索查询中
-            params["query"] = f"{search_query} category:{self.classification}"
-
-        return f"{base_url}?{urlencode(params)}", params
+        self.pdf_downloader = PlaywrightPDFDownloader(headless=True)
+        self.item_count = 0
+        self.max_items = 500  # 与 CLOSESPIDER_ITEMCOUNT 保持一致
 
     def start_requests(self):
-        url, params = self.get_search_url(0)
-        yield scrapy.Request(url=url, callback=self.parse_search, meta={"start_idx": 0, "params": params})
+        """使用 BioRxiv API 获取论文列表"""
+        url = f"https://api.biorxiv.org/details/biorxiv/{self.start_date}/{self.end_date}/0"
+        yield scrapy.Request(url=url, callback=self.parse_api, meta={"cursor": 0})
 
-    def parse_search(self, response):
-        """解析BioRxiv搜索结果页面"""
-        # BioRxiv搜索结果的CSS选择器
-        results = response.css("div.highwire-article-citation")
-
-        if not results:
-            self.logger.info("No more results found.")
+    async def parse_api(self, response):
+        """解析 API 返回的 JSON 数据"""
+        try:
+            data = json.loads(response.text)
+        except json.JSONDecodeError as e:
+            self.logger.error(f"Failed to parse API response: {e}")
             return
 
-        for paper in results:
-            # 提取标题链接（需要访问详情页获取PDF和分类）
-            title_link = paper.css("a.highwire-cite-linked-title::attr(href)").get()
-            if not title_link:
+        messages = data.get("messages", [])
+        if not messages or messages[0].get("status") != "ok":
+            self.logger.error(f"API error: {messages}")
+            return
+
+        total = int(messages[0].get("total", 0))
+        cursor = response.meta["cursor"]
+        self.logger.info(f"API response: cursor={cursor}, total={total}")
+
+        # 1. 收集本页所有符合条件的 paper 元数据
+        papers_to_download = []
+        collection = data.get("collection", [])
+        for paper in collection:
+            doi = paper.get("doi")
+            category = paper.get("category", "unknown")
+            version = paper.get("version", "1")
+
+            # 只爬取首次发表的文章（version == "1"），跳过更新的文章
+            if version != "1":
+                self.logger.debug(f"Skipping updated paper (version {version}): {paper.get('title', '')}")
                 continue
 
-            if not title_link.startswith("http"):
-                title_link = f"https://www.biorxiv.org{title_link}"
+            if self.classification != "all" and category != self.classification:
+                continue
 
-            # 提取标题
-            title = paper.css("a.highwire-cite-linked-title::text").get()
-            if title:
-                title = title.strip()
+            title = paper.get("title", "")
+            date_str = paper.get("date", "")
 
-            # 提取日期 (格式如 "2025.12.30")
-            date_text = paper.css("span.highwire-cite-metadata-pages::text").get()
-            if date_text:
-                # 使用正则提取日期
-                date_match = re.search(r"(\d{4})\.(\d{2})\.(\d{2})", date_text)
-                if date_match:
-                    year, month, day = date_match.groups()
-                    try:
-                        dt = datetime(int(year), int(month), int(day))
-                        formatted_date = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
-                    except Exception as e:
-                        self.logger.warning(f"Failed to parse date from '{date_text}': {e}")
-                        formatted_date = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-                else:
-                    formatted_date = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-            else:
+            try:
+                dt = datetime.strptime(date_str, "%Y-%m-%d")
+                formatted_date = dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+            except ValueError:
                 formatted_date = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-            self.logger.info(f"Found paper: {title} | URL: {title_link}")
-
-            # 访问文章详情页以获取PDF链接和分类
-            yield scrapy.Request(
-                url=title_link,
-                callback=self.parse_article_page,
-                meta={
+            self.logger.info(f"Found paper: {title} | DOI: {doi} | Category: {category}")
+            papers_to_download.append(
+                {
+                    "doi": doi,
                     "title": title,
                     "date": formatted_date,
-                },
+                    "category": category,
+                }
             )
 
-        # 处理分页
-        current_idx = response.meta["start_idx"]
-        next_idx = current_idx + self.page_size
+        download_semaphore = asyncio.Semaphore(16)
+        ocr_semaphore = asyncio.Semaphore(16)
 
-        if len(results) > 0:
-            url, _ = self.get_search_url(next_idx)
-            yield scrapy.Request(url=url, callback=self.parse_search, meta={"start_idx": next_idx, "params": response.meta["params"]})
+        async def process_paper(paper):
+            """单个论文的完整处理流程：下载 -> OCR -> 返回结果"""
+            async with download_semaphore:
+                pdf_bytes = await self.pdf_downloader.download_pdf(paper["doi"])
 
-    def parse_article_page(self, response):
-        """解析文章详情页，提取PDF链接和学科分类"""
-        title = response.meta["title"]
+            if not pdf_bytes:
+                self.logger.warning(f"Failed to download PDF for {paper['title']} (DOI: {paper['doi']})")
+                return None
 
-        # 提取PDF链接
-        pdf_link = response.css("a.article-dl-pdf-link::attr(href)").get()
-        if not pdf_link:
-            # 尝试备用选择器
-            pdf_link = response.xpath('//a[contains(@class, "pdf")]/@href').get()
+            file_name = f"{paper['doi'].replace('/', '_')}.pdf"
+            self.logger.info(f"PDF downloaded: {file_name}, size: {len(pdf_bytes)} bytes. Doing OCR...")
 
-        if pdf_link and not pdf_link.startswith("http"):
-            pdf_link = f"https://www.biorxiv.org{pdf_link}"
+            async with ocr_semaphore:
+                content = await self.mineru_client.process_pdf_stream_async(file_name, pdf_bytes)
 
-        # 提取学科分类
-        category_tag = response.css(".pane-highwire-article-collection-info .highlight::text").get()
-        if not category_tag:
-            # 尝试其他可能的选择器
-            category_tag = response.css("span.highwire-article-collection-term::text").get()
+            if not content:
+                self.logger.warning(f"OCR returned empty content for {file_name}")
+                return None
 
-        if category_tag:
-            # 将分类名转换为小写并用下划线替换空格
-            actual_classification = category_tag.strip().lower().replace(" ", "_").replace("-", "_")
-        else:
-            actual_classification = "unknown"
+            cleaned_content = self.clean_text(content)
+            item = BiorxivPaperItem()
+            item["content"] = cleaned_content
+            item["category"] = f"biorxiv_{self.subtitle}"
+            item["date"] = paper["date"]
+            item["url"] = f"https://www.biorxiv.org/content/{paper['doi']}.full.pdf"
+            item["metadata"] = {
+                "title": paper["title"],
+                "raw_content": content,
+                "classification": paper["category"],
+                "doi": paper["doi"],
+            }
+            self.logger.info(f"Successfully processed {file_name}")
+            return item
 
-        self.logger.info(f"Article: {title} | Classification: {actual_classification} | PDF: {pdf_link}")
+        tasks = [process_paper(paper) for paper in papers_to_download]
 
-        if pdf_link:
-            file_name = pdf_link.split("/")[-1]
-            if not file_name.endswith(".pdf"):
-                file_name += ".pdf"
+        for coro in asyncio.as_completed(tasks):
+            item = await coro
+            if item:
+                self.item_count += 1
+                yield item
+                # 达到目标数量后停止
+                if self.item_count >= self.max_items:
+                    self.logger.info(f"Reached max items ({self.max_items}), stopping...")
+                    return
 
-            yield scrapy.Request(
-                url=pdf_link,
-                method="HEAD",
-                callback=self.check_pdf_size,
-                meta={
-                    "file_name": file_name,
-                    "source_url": pdf_link,
-                    "title": title,
-                    "date": response.meta["date"],
-                    "actual_classification": actual_classification,
-                },
-            )
-        else:
-            self.logger.warning(f"No PDF link found for {title}")
+        # 只有未达到目标数量时才请求下一页
+        next_cursor = cursor + self.page_size
+        if next_cursor < total and self.item_count < self.max_items:
+            next_url = f"https://api.biorxiv.org/details/biorxiv/{self.start_date}/{self.end_date}/{next_cursor}"
+            yield scrapy.Request(url=next_url, callback=self.parse_api, meta={"cursor": next_cursor})
 
-    def check_pdf_size(self, response):
-        """检查PDF文件大小"""
-        file_name = response.meta["file_name"]
-        max_size = self.size_limit * 1024 * 1024  # 转换为字节
-
-        try:
-            content_length = int(response.headers.get("Content-Length", 0))
-        except ValueError:
-            content_length = 0
-
-        if content_length > max_size:
-            size_mb = content_length / (1024 * 1024)
-            self.logger.info(f"⚠️ Skipping {file_name}: Size {size_mb:.2f} MB exceeds {self.size_limit}MB limit.")
-            return
-
-        if content_length > 0:
-            self.logger.info(f"✅ Size check passed for {file_name}: {content_length / 1024 / 1024:.2f} MB. Starting download...")
-
-        yield scrapy.Request(
-            url=response.url,
-            method="GET",
-            callback=self.parse_pdf_downloaded,
-            meta=response.meta,
-            dont_filter=True,
-        )
-
-    async def parse_pdf_downloaded(self, response):
+    def process_pdf(self, pdf_bytes, file_name, doi, title, date, actual_classification):
         """处理下载的PDF文件"""
-        file_name = response.meta["file_name"]
-        pdf_bytes = response.body
-
-        self.logger.info(f"PDF downloaded: {file_name}, size: {len(pdf_bytes)} bytes. Doing OCR...")
-
         try:
-            content = await asyncio.to_thread(self.mineru_client.process_pdf_stream, file_name, pdf_bytes)
+            content = self.mineru_client.process_pdf_stream(file_name, pdf_bytes)
 
             if content:
                 cleaned_content = self.clean_text(content)
-                actual_classification = response.meta.get("actual_classification", "unknown")
 
                 item = BiorxivPaperItem()
                 item["content"] = cleaned_content
                 item["category"] = f"biorxiv_{self.subtitle}"
-                item["date"] = response.meta["date"]
-                item["url"] = response.meta["source_url"]
-                item["metadata"] = {"title": response.meta["title"], "raw_content": content, "classification": actual_classification}
+                item["date"] = date
+                item["url"] = f"https://www.biorxiv.org/content/{doi}.full.pdf"
+                item["metadata"] = {
+                    "title": title,
+                    "raw_content": content,
+                    "classification": actual_classification,
+                    "doi": doi,
+                }
                 yield item
                 self.logger.info(f"Successfully processed {file_name}")
             else:
@@ -243,6 +186,11 @@ class BiorxivSpider(scrapy.Spider):
 
         except Exception as e:
             self.logger.error(f"Error processing {file_name}: {e}")
+
+    def closed(self, reason):
+        """爬虫关闭时清理资源"""
+        self.pdf_downloader.close()
+        self.logger.info(f"Spider closed: {reason}")
 
     @staticmethod
     def clean_text(text):
@@ -257,7 +205,7 @@ class BiorxivSpider(scrapy.Spider):
         text = "".join(lines[:cut_off_index])
 
         # 移除appendix
-        target_words = ["appendix", "author"]
+        target_words = ["appendix", "author", "Bibliography"]
         lines = text.splitlines(keepends=True)
         cut_off_index = len(lines)
         for i in range(len(lines) - 1, -1, -1):
