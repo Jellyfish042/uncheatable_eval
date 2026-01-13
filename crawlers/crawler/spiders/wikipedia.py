@@ -215,8 +215,9 @@ class WikipediaSpider(scrapy.Spider):
         if lang in self.language_exhausted:
             return []
 
-        # Check if language has reached its quota
-        if self.language_item_counts[lang] >= self.language_quota.get(lang, float('inf')):
+        # Check if language has reached its quota (considering pending requests)
+        effective_count = self.language_item_counts[lang] + self.language_pending_requests[lang]
+        if effective_count >= self.language_quota.get(lang, float('inf')):
             return []
 
         # Check if date queue is empty
@@ -312,13 +313,26 @@ class WikipediaSpider(scrapy.Spider):
         # Calculate remaining quota to distribute
         current_total = sum(self.language_item_counts.values())
         remaining = max(0, self.total_target - current_total)
-        extra_per_language = remaining // len(active_languages) if active_languages else 0
 
-        for lang in active_languages:
-            self.language_quota[lang] = self.language_item_counts[lang] + extra_per_language
+        # Distribute remaining quota, ensuring at least 1 per language if there's any remaining
+        base_extra = remaining // len(active_languages) if active_languages else 0
+        remainder = remaining % len(active_languages) if active_languages else 0
+
+        for i, lang in enumerate(active_languages):
+            # Give first 'remainder' languages an extra 1
+            extra = base_extra + (1 if i < remainder else 0)
+            self.language_quota[lang] = self.language_item_counts[lang] + extra
 
         self.logger.info(f"Quota redistributed. Active: {len(active_languages)}, "
-                        f"Exhausted: {len(self.language_exhausted)}, Extra per lang: {extra_per_language}")
+                        f"Exhausted: {len(self.language_exhausted)}, Remaining: {remaining}")
+
+        # Proactively create requests for idle languages that got extra quota
+        if hasattr(self, 'crawler') and self.crawler:
+            for lang in active_languages:
+                if self.language_pending_requests[lang] == 0:
+                    if self.language_item_counts[lang] < self.language_quota.get(lang, 0):
+                        for request in self._create_date_range_request(lang):
+                            self.crawler.engine.crawl(request)
 
     def _log_balance_stats(self):
         """Log language balance statistics."""
@@ -358,9 +372,11 @@ class WikipediaSpider(scrapy.Spider):
                 self.language_empty_responses[lang] = 0
 
         for change in recent_changes:
-            # Check if language has reached its quota
-            if self.balance_languages and self.language_item_counts[lang] >= self.language_quota.get(lang, float('inf')):
-                break
+            # Check if language has reached its quota (considering pending requests)
+            if self.balance_languages:
+                effective_count = self.language_item_counts[lang] + self.language_pending_requests[lang]
+                if effective_count >= self.language_quota.get(lang, float('inf')):
+                    break
 
             title = change["title"]
             timestamp = change["timestamp"]
@@ -418,13 +434,19 @@ class WikipediaSpider(scrapy.Spider):
         if self.balance_languages:
             self.language_pending_requests[lang] = max(0, self.language_pending_requests[lang] - 1)
 
-        if "error" in data or "parse" not in data:
-            if self.balance_languages:
-                self._check_language_exhaustion(lang)
-            return
+            # Replenish requests: only trigger when pending reaches 0 to avoid over-consuming date queue
+            pending = self.language_pending_requests[lang]
+            if pending == 0 and lang not in self.language_exhausted:
+                effective_count = self.language_item_counts[lang]
+                quota = self.language_quota.get(lang, float('inf'))
+                if effective_count < quota:
+                    for next_request in self._create_date_range_request(lang):
+                        yield next_request
 
-        # Check if language has reached its quota
-        if self.balance_languages and self.language_item_counts[lang] >= self.language_quota.get(lang, float('inf')):
+            # Check if language should be marked as exhausted
+            self._check_language_exhaustion(lang)
+
+        if "error" in data or "parse" not in data:
             return
 
         html_content = data["parse"]["text"]["*"]
