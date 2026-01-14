@@ -109,9 +109,9 @@ def process_file(input_path, output_path, cut_off_length, max_sample, search_ran
         max_chars = max(char_counts)
         min_chars = min(char_counts)
 
-        print(f"  Statistics:")
-        print(f"    Tokens (GPT-2 tokenizer) - avg: {avg_tokens:.1f}, max: {max_tokens_stat}, min: {min_tokens_stat}")
-        print(f"    Chars  - avg: {avg_chars:.1f}, max: {max_chars}, min: {min_chars}")
+        print(f"    ├── Samples: {len(data)}")
+        print(f"    ├── Tokens (GPT-2): avg={avg_tokens:.1f}, min={min_tokens_stat}, max={max_tokens_stat}")
+        print(f"    └── Chars: avg={avg_chars:.1f}, min={min_chars}, max={max_chars}")
 
     return len(data)
 
@@ -123,7 +123,7 @@ def main():
     parser.add_argument("--cut-off-length", type=int, default=10000, help="Target truncation length (default: 5000)")
     parser.add_argument("--max-sample", type=int, default=500, help="Maximum number of samples to process (default: 500)")
     parser.add_argument("--search-range", type=int, default=100, help="Soft truncation search range (default: 100)")
-    parser.add_argument("--max-tokens", type=int, default=4000, help="Maximum token count using GPT-2 tokenizer (default: 4000)")
+    parser.add_argument("--max-tokens", type=int, default=3999, help="Maximum token count using GPT-2 tokenizer (default: 4000)")
 
     args = parser.parse_args()
 
@@ -142,8 +142,15 @@ def main():
 
         output_path = Path(args.output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        print(f"\n{'='*60}")
+        print(f"Processing: {input_path.name}")
+        print(f"{'='*60}")
+        print(f"  Output: {output_path}")
         num_samples = process_file(input_path, output_path, args.cut_off_length, args.max_sample, args.search_range, args.max_tokens, tokenizer)
-        print(f"Processing completed: processed {num_samples} samples, output to {output_path}")
+        print(f"{'='*60}")
+        print(f"Done: {num_samples} samples processed")
+        print(f"{'='*60}\n")
 
     elif input_path.is_dir():
         jsonl_files = list(input_path.glob("*.jsonl"))
@@ -155,14 +162,28 @@ def main():
         output_dir = Path(args.output_path) if args.output_path else input_path
         output_dir.mkdir(parents=True, exist_ok=True)
 
+        print(f"\n{'='*60}")
+        print(f"Batch Processing: {input_path}")
+        print(f"{'='*60}")
+        print(f"  Files found: {len(jsonl_files)}")
+        print(f"  Output dir:  {output_dir}")
+        print(f"  Settings:    cut_off={args.cut_off_length}, max_tokens={args.max_tokens}, max_sample={args.max_sample}")
+        print(f"{'='*60}")
+
         total_samples = 0
-        for jsonl_file in jsonl_files:
+        for i, jsonl_file in enumerate(jsonl_files, 1):
             output_file = output_dir / f"{jsonl_file.stem}_cutoff{jsonl_file.suffix}"
+            print(f"\n[{i}/{len(jsonl_files)}] {jsonl_file.name} -> {output_file.name}")
             num_samples = process_file(jsonl_file, output_file, args.cut_off_length, args.max_sample, args.search_range, args.max_tokens, tokenizer)
             total_samples += num_samples
-            print(f"Processed '{jsonl_file.name}': {num_samples} samples -> '{output_file.name}'")
 
-        print(f"\nProcessing completed: processed {len(jsonl_files)} files, {total_samples} total samples, output to '{output_dir}'")
+        print(f"\n{'='*60}")
+        print(f"Summary")
+        print(f"{'='*60}")
+        print(f"  Files processed:  {len(jsonl_files)}")
+        print(f"  Total samples:    {total_samples}")
+        print(f"  Output directory: {output_dir}")
+        print(f"{'='*60}\n")
 
 
 if __name__ == "__main__":
