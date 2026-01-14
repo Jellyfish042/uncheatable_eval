@@ -14,6 +14,7 @@ class BBCSpider(scrapy.Spider):
         "USER_AGENT": "User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
         "ITEM_PIPELINES": {
             "crawler.pipelines.LengthFilterPipeline": 100,
+            "crawler.pipelines.DateRangeFilterPipeline": 150,
             "crawler.pipelines.MinHashLSHDuplicateFilterPipeline": 300,
             "crawler.pipelines.JsonWriterPipeline": 400,
         },

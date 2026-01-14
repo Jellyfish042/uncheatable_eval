@@ -13,6 +13,7 @@ class WikipediaSpider(scrapy.Spider):
     custom_settings = {
         "ITEM_PIPELINES": {
             "crawler.pipelines.LengthFilterPipeline": 100,
+            "crawler.pipelines.DateRangeFilterPipeline": 150,
             "crawler.pipelines.MinHashLSHDuplicateFilterPipeline": 300,
             "crawler.pipelines.LanguageBalanceCounterPipeline": 350,
             "crawler.pipelines.JsonWriterPipeline": 400,

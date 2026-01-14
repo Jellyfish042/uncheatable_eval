@@ -90,6 +90,25 @@ class MinHashLSHDuplicateFilterPipeline:
         return item
 
 
+class DateRangeFilterPipeline:
+    """
+    Pipeline to filter items based on date range.
+    Drops items whose date is outside the spider's start_date and end_date.
+    """
+
+    def process_item(self, item, spider):
+        item_date = item.get("date", "")[:10]  # Extract YYYY-MM-DD
+        start_date = getattr(spider, "start_date", None)
+        end_date = getattr(spider, "end_date", None)
+
+        if start_date and end_date and item_date:
+            if item_date < start_date or item_date > end_date:
+                spider.logger.info(f"Date {item_date} out of range [{start_date}, {end_date}].")
+                raise DropItem(f"Date {item_date} out of range.")
+
+        return item
+
+
 class LanguageBalanceCounterPipeline:
     """
     Pipeline to accurately count items per language after all filters.
