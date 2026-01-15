@@ -4,6 +4,19 @@ import os
 from datasketch import MinHash, MinHashLSH
 
 
+class SpecialCharFilterPipeline:
+    """
+    Pipeline to filter items containing U+2581 character.
+    """
+
+    def process_item(self, item, spider):
+        content = item.get("content", "")
+        if "\u2581" in content:
+            spider.logger.info("Content contains U+2581 character, dropping item.")
+            raise DropItem("Content contains U+2581 character.")
+        return item
+
+
 class LengthFilterPipeline:
     def __init__(self, min_len, cut_off_len):
         self.min_len = min_len

@@ -10,7 +10,19 @@ def nfc_normalize(text: str) -> str:
     return unicodedata.normalize("NFC", text)
 
 
+def truncate_by_bytes(text: str, max_bytes: int, encoding: str = "utf-8") -> str:
+    encoded = text.encode(encoding)
+    if len(encoded) <= max_bytes:
+        return text
+    sliced_bytes = encoded[:max_bytes]
+    return sliced_bytes.decode(encoding, errors="ignore")
+
+
 def soft_truncate(text, target_length, search_range):
+
+    if target_length is None:
+        return text.strip()
+
     if len(text) <= target_length:
         return text.strip()
 
@@ -82,23 +94,27 @@ def save_jsonl(data, file_path):
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
 
-def process_file(input_path, output_path, cut_off_length, max_sample, search_range, max_tokens, tokenizer):
+def process_file(input_path, output_path, cut_off_length, max_sample, search_range, max_tokens, max_bytes, tokenizer):
     data = read_jsonl(input_path)
     data = data[:max_sample]
     for sample in data:
         sample["content"] = nfc_normalize(sample["content"])
         sample["untruncated_content"] = sample["content"]
+        if max_bytes is not None:
+            sample["content"] = truncate_by_bytes(sample["content"], max_bytes)
         sample["content"] = truncate_with_token_limit(sample["content"], cut_off_length, search_range, max_tokens, tokenizer)
     save_jsonl(data, output_path)
 
     # Collect statistics
     token_counts = []
     char_counts = []
+    byte_counts = []
     for sample in data:
         content = sample["content"]
         tokens = tokenizer.encode(content)
         token_counts.append(len(tokens))
         char_counts.append(len(content))
+        byte_counts.append(len(content.encode("utf-8")))
 
     # Print statistics
     if token_counts:
@@ -108,10 +124,14 @@ def process_file(input_path, output_path, cut_off_length, max_sample, search_ran
         avg_chars = sum(char_counts) / len(char_counts)
         max_chars = max(char_counts)
         min_chars = min(char_counts)
+        avg_bytes = sum(byte_counts) / len(byte_counts)
+        max_bytes_stat = max(byte_counts)
+        min_bytes_stat = min(byte_counts)
 
         print(f"    ├── Samples: {len(data)}")
         print(f"    ├── Tokens (GPT-2): avg={avg_tokens:.1f}, min={min_tokens_stat}, max={max_tokens_stat}")
-        print(f"    └── Chars: avg={avg_chars:.1f}, min={min_chars}, max={max_chars}")
+        print(f"    ├── Chars: avg={avg_chars:.1f}, min={min_chars}, max={max_chars}")
+        print(f"    └── Bytes: avg={avg_bytes:.1f}, min={min_bytes_stat}, max={max_bytes_stat}")
 
     return len(data)
 
@@ -120,10 +140,31 @@ def main():
     parser = argparse.ArgumentParser(description="Process JSONL files using soft truncation strategy to truncate text content")
     parser.add_argument("input_path", help="Input JSONL file path or directory path")
     parser.add_argument("output_path", nargs="?", help="Output JSONL file path or directory path (optional, auto-generated if input is a directory)")
-    parser.add_argument("--cut-off-length", type=int, default=10000, help="Target truncation length (default: 5000)")
-    parser.add_argument("--max-sample", type=int, default=500, help="Maximum number of samples to process (default: 500)")
+    parser.add_argument(
+        "--cut-off-length",
+        type=lambda x: None if x.lower() == "none" else int(x),
+        default=None,
+        help="Target truncation length, or 'none' to disable (default: 10000)",
+    )
+    parser.add_argument(
+        "--max-sample",
+        type=lambda x: None if x.lower() == "none" else int(x),
+        default=500,
+        help="Maximum number of samples to process, or 'none' to disable (default: 500)",
+    )
     parser.add_argument("--search-range", type=int, default=100, help="Soft truncation search range (default: 100)")
-    parser.add_argument("--max-tokens", type=lambda x: None if x.lower() == 'none' else int(x), default=3999, help="Maximum token count using GPT-2 tokenizer, or 'none' to disable (default: 3999)")
+    parser.add_argument(
+        "--max-tokens",
+        type=lambda x: None if x.lower() == "none" else int(x),
+        default=3999,
+        help="Maximum token count using GPT-2 tokenizer, or 'none' to disable (default: 3999)",
+    )
+    parser.add_argument(
+        "--max-bytes",
+        type=lambda x: None if x.lower() == "none" else int(x),
+        default=None,
+        help="Maximum byte count (UTF-8), or 'none' to disable (default: none)",
+    )
 
     args = parser.parse_args()
 
@@ -147,7 +188,9 @@ def main():
         print(f"Processing: {input_path.name}")
         print(f"{'='*60}")
         print(f"  Output: {output_path}")
-        num_samples = process_file(input_path, output_path, args.cut_off_length, args.max_sample, args.search_range, args.max_tokens, tokenizer)
+        num_samples = process_file(
+            input_path, output_path, args.cut_off_length, args.max_sample, args.search_range, args.max_tokens, args.max_bytes, tokenizer
+        )
         print(f"{'='*60}")
         print(f"Done: {num_samples} samples processed")
         print(f"{'='*60}\n")
@@ -167,14 +210,16 @@ def main():
         print(f"{'='*60}")
         print(f"  Files found: {len(jsonl_files)}")
         print(f"  Output dir:  {output_dir}")
-        print(f"  Settings:    cut_off={args.cut_off_length}, max_tokens={args.max_tokens}, max_sample={args.max_sample}")
+        print(f"  Settings:    cut_off={args.cut_off_length}, max_tokens={args.max_tokens}, max_bytes={args.max_bytes}, max_sample={args.max_sample}")
         print(f"{'='*60}")
 
         total_samples = 0
         for i, jsonl_file in enumerate(jsonl_files, 1):
             output_file = output_dir / f"{jsonl_file.stem}_cutoff{jsonl_file.suffix}"
             print(f"\n[{i}/{len(jsonl_files)}] {jsonl_file.name} -> {output_file.name}")
-            num_samples = process_file(jsonl_file, output_file, args.cut_off_length, args.max_sample, args.search_range, args.max_tokens, tokenizer)
+            num_samples = process_file(
+                jsonl_file, output_file, args.cut_off_length, args.max_sample, args.search_range, args.max_tokens, args.max_bytes, tokenizer
+            )
             total_samples += num_samples
 
         print(f"\n{'='*60}")
