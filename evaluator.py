@@ -275,7 +275,7 @@ class Evaluator:
 
     @staticmethod
     def calculate_log_sum(logits, target_token_ids, reduction="none"):
-        return F.cross_entropy(logits[:-1], target_token_ids[1:], reduction=reduction)
+        return F.cross_entropy(logits[:-1].float(), target_token_ids[1:], reduction=reduction)
 
     @staticmethod
     def count_rwkv_parameters_in_billions(rwkv_model):
@@ -328,8 +328,10 @@ class Evaluator:
             input_length = len(input_seq)
 
             if not chunking_warning_shown and input_length > chunk_size:
-                print(f"Warning: Test sequence length ({input_length}) exceeds chunk_size ({chunk_size}). "
-                      "This may be unfair when comparing models with different tokenizers.")
+                print(
+                    f"Warning: Test sequence length ({input_length}) exceeds chunk_size ({chunk_size}). "
+                    "This may be unfair when comparing models with different tokenizers."
+                )
                 chunking_warning_shown = True
 
             neg_log_prob_temp = 0
