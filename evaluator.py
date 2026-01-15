@@ -588,7 +588,7 @@ class Evaluator:
 
         # load TokenizerBytesConverter if check_byte_wise_data is True
         if config.track_byte_wise_data and config.model_type in ["hf", "mamba", "mistral", "modelscope"]:
-            tokenizer_bytes_converter = TokenizerBytesConverter(config.tokenizer_name, config.cache, **config.tokenizer_args)
+            tokenizer_bytes_converter = TokenizerBytesConverter(config.tokenizer_name, config.cache, tokenizer=tokenizer, **config.tokenizer_args)
             token2bytes_convert_func = tokenizer_bytes_converter.encode_to_bytes
         else:
             tokenizer_bytes_converter = None

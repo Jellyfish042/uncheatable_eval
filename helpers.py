@@ -109,9 +109,10 @@ class TokenizerBytesConverter:
 
     def __init__(
         self,
-        model_name_or_path: str,
+        model_name_or_path: str = None,
         cache_dir: Optional[str] = None,
         trust_remote_code: bool = True,
+        tokenizer=None,
     ):
         """
         Initialize the converter.
@@ -120,18 +121,25 @@ class TokenizerBytesConverter:
             model_name_or_path: HuggingFace model name or local path
             cache_dir: Directory to cache the downloaded tokenizer files
             trust_remote_code: Whether to trust remote code for custom tokenizers
+            tokenizer: Optional pre-loaded tokenizer instance for encoding.
+                       If provided, this tokenizer will be used for encode() calls,
+                       while AutoTokenizer is still used to extract vocab/decoder config.
         """
         from transformers import AutoTokenizer
 
-        self._tokenizer = AutoTokenizer.from_pretrained(
+        # Always load AutoTokenizer for vocab extraction
+        auto_tokenizer = AutoTokenizer.from_pretrained(
             model_name_or_path,
             cache_dir=cache_dir,
             trust_remote_code=trust_remote_code,
         )
 
-        # Extract tokenizer.json from the backend tokenizer
-        if hasattr(self._tokenizer, "backend_tokenizer") and hasattr(self._tokenizer.backend_tokenizer, "to_str"):
-            tokenizer_json = json.loads(self._tokenizer.backend_tokenizer.to_str())
+        # Use provided tokenizer for encoding, or fall back to auto_tokenizer
+        self._tokenizer = tokenizer if tokenizer is not None else auto_tokenizer
+
+        # Extract tokenizer.json from the AutoTokenizer's backend
+        if hasattr(auto_tokenizer, "backend_tokenizer") and hasattr(auto_tokenizer.backend_tokenizer, "to_str"):
+            tokenizer_json = json.loads(auto_tokenizer.backend_tokenizer.to_str())
         else:
             raise ValueError("Tokenizer object is not supported. " "The tokenizer must have a backend_tokenizer with to_str() method.")
 
