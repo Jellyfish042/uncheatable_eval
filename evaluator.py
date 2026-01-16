@@ -275,7 +275,8 @@ class Evaluator:
 
     @staticmethod
     def calculate_log_sum(logits, target_token_ids, reduction="none"):
-        return F.cross_entropy(logits[:-1].float(), target_token_ids[1:], reduction=reduction)
+        # return F.cross_entropy(logits[:-1].float(), target_token_ids[1:], reduction=reduction)
+        return F.cross_entropy(logits[:-1].to(torch.bf), target_token_ids[1:], reduction=reduction)
 
     @staticmethod
     def count_rwkv_parameters_in_billions(rwkv_model):
