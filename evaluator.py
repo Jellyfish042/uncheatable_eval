@@ -339,7 +339,20 @@ class Evaluator:
 
                 input_chunk = [0] + input_seq[begin : begin + chunk_size]
 
-                logit = model.forward(input_chunk, None, full_output=True)[0]
+                if hasattr(tokenized, "ids"):
+                    logit = model.forward(input_chunk, None, full_output=True)[0]
+                else:
+                    CHUNK_LEN = 1024
+                    state = None
+                    logit = torch.empty((0, 65536), device="cuda")
+                    while len(input_chunk) > 0:
+                        out, state = model.forward(input_chunk[:CHUNK_LEN], state, full_output=True)
+                        if len(input_chunk) == 1:
+                            out = out.unsqueeze(0)
+                        input_chunk = input_chunk[CHUNK_LEN:]
+                        logit = torch.concat((logit, out), dim=0)
+
+                    input_chunk = [0] + input_seq[begin : begin + chunk_size]
 
                 if len(input_chunk) == 1:
                     logit = logit.unsqueeze(0)
