@@ -285,29 +285,14 @@ class TokenizerBytesConverter:
         token_ids = self._tokenizer.encode(text, add_special_tokens=add_special_tokens)
 
         result = []
-        prev_was_special = False
-
         for idx, token_id in enumerate(token_ids):
-            token_str = self._id_to_token.get(token_id)
-            if token_str is None:
-                continue
+            token_bytes = self.token_to_bytes(token_id)
+            if token_bytes is not None:
+                # Handle SentencePiece leading space
+                if idx == 0 and self._decoder_type == "sentencepiece" and strip_leading_space and token_bytes and token_bytes[0] == 0x20:
+                    token_bytes = token_bytes[1:]
 
-            is_special = token_id in self._special_token_ids
-
-            if self._decoder_type == "sentencepiece":
-                # If previous token was special and current starts with ▁, skip ▁
-                if prev_was_special and token_str.startswith("▁"):
-                    token_str = token_str[1:]
-                token_bytes = self._decode_sentencepiece(token_str)
-            else:
-                token_bytes = self._decode_bytelevel(token_str)
-
-            # Handle SentencePiece leading space for first token
-            if idx == 0 and self._decoder_type == "sentencepiece" and strip_leading_space and token_bytes and token_bytes[0] == 0x20:
-                token_bytes = token_bytes[1:]
-
-            result.append(token_bytes)
-            prev_was_special = is_special
+                result.append(token_bytes)
 
         return result
 

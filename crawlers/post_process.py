@@ -1,9 +1,17 @@
 import json
 import argparse
 from pathlib import Path
-from transformers import GPT2Tokenizer
-import warnings
+from transformers import AutoTokenizer
 import unicodedata
+
+# Tokenizer models for multi-tokenizer truncation
+TOKENIZER_MODELS = [
+    "gpt2",
+    "google/gemma-3-270m",
+    "Qwen/Qwen3-0.6B-Base",
+    "meta-llama/Llama-2-7b-hf",
+    "EleutherAI/gpt-neox-20b",
+]
 
 
 def nfc_normalize(text: str) -> str:
@@ -50,10 +58,20 @@ def soft_truncate(text, target_length, search_range):
         return text[:target_length].strip()
 
 
-def truncate_with_token_limit(text, cut_off_length, search_range, max_tokens, tokenizer):
+def get_max_token_count(text, tokenizers):
+    """Get the maximum token count across all tokenizers."""
+    max_count = 0
+    for tokenizer in tokenizers:
+        tokens = tokenizer.encode(text)
+        max_count = max(max_count, len(tokens))
+    return max_count
+
+
+def truncate_with_token_limit(text, cut_off_length, search_range, max_tokens, tokenizers):
     """
-    Truncate text using soft truncation and ensure token count doesn't exceed max_tokens.
-    Iteratively reduces target_length if token count is too high.
+    Truncate text using soft truncation and ensure token count doesn't exceed max_tokens
+    for ALL tokenizers. Uses the maximum token count across all tokenizers to ensure
+    the sequence length is within limit regardless of which tokenizer is used.
     """
     if max_tokens is None:
         # No token limit, just do regular soft truncation
@@ -62,23 +80,23 @@ def truncate_with_token_limit(text, cut_off_length, search_range, max_tokens, to
     # First soft truncate
     truncated = soft_truncate(text, cut_off_length, search_range)
 
-    # Check token count (suppress warnings about sequence length)
-    tokens = tokenizer.encode(truncated)
+    # Check token count across all tokenizers
+    token_count = get_max_token_count(truncated, tokenizers)
 
     # If within limit, return
-    if len(tokens) <= max_tokens:
+    if token_count <= max_tokens:
         return truncated
 
     # Otherwise, iteratively reduce target_length
     current_target = len(truncated)
 
-    while len(tokens) > max_tokens and current_target > 0:
-        reduction_ratio = max_tokens / len(tokens)
+    while token_count > max_tokens and current_target > 0:
+        reduction_ratio = max_tokens / token_count
         current_target = int(current_target * reduction_ratio * 0.95)
         current_target = max(1, current_target)
 
         truncated = soft_truncate(text, current_target, search_range)
-        tokens = tokenizer.encode(truncated)
+        token_count = get_max_token_count(truncated, tokenizers)
 
     return truncated
 
@@ -94,7 +112,7 @@ def save_jsonl(data, file_path):
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
 
-def process_file(input_path, output_path, cut_off_length, max_sample, search_range, max_tokens, max_bytes, tokenizer):
+def process_file(input_path, output_path, cut_off_length, max_sample, search_range, max_tokens, max_bytes, tokenizers, tokenizer_names):
     data = read_jsonl(input_path)
     data = data[:max_sample]
     for sample in data:
@@ -102,34 +120,37 @@ def process_file(input_path, output_path, cut_off_length, max_sample, search_ran
         sample["untruncated_content"] = sample["content"]
         if max_bytes is not None:
             sample["content"] = truncate_by_bytes(sample["content"], max_bytes)
-        sample["content"] = truncate_with_token_limit(sample["content"], cut_off_length, search_range, max_tokens, tokenizer)
+        sample["content"] = truncate_with_token_limit(sample["content"], cut_off_length, search_range, max_tokens, tokenizers)
     save_jsonl(data, output_path)
 
-    # Collect statistics
-    token_counts = []
+    # Collect statistics per tokenizer
+    token_counts_per_tokenizer = {name: [] for name in tokenizer_names}
     char_counts = []
     byte_counts = []
     for sample in data:
         content = sample["content"]
-        tokens = tokenizer.encode(content)
-        token_counts.append(len(tokens))
+        for tokenizer, name in zip(tokenizers, tokenizer_names):
+            tokens = tokenizer.encode(content)
+            token_counts_per_tokenizer[name].append(len(tokens))
         char_counts.append(len(content))
         byte_counts.append(len(content.encode("utf-8")))
 
     # Print statistics
-    if token_counts:
-        avg_tokens = sum(token_counts) / len(token_counts)
-        max_tokens_stat = max(token_counts)
-        min_tokens_stat = min(token_counts)
+    if char_counts:
+        print(f"    ├── Samples: {len(data)}")
+        for name in tokenizer_names:
+            token_counts = token_counts_per_tokenizer[name]
+            avg_tokens = sum(token_counts) / len(token_counts)
+            max_tokens_stat = max(token_counts)
+            min_tokens_stat = min(token_counts)
+            short_name = name.split("/")[-1] if "/" in name else name
+            print(f"    ├── Tokens ({short_name}): avg={avg_tokens:.1f}, min={min_tokens_stat}, max={max_tokens_stat}")
         avg_chars = sum(char_counts) / len(char_counts)
         max_chars = max(char_counts)
         min_chars = min(char_counts)
         avg_bytes = sum(byte_counts) / len(byte_counts)
         max_bytes_stat = max(byte_counts)
         min_bytes_stat = min(byte_counts)
-
-        print(f"    ├── Samples: {len(data)}")
-        print(f"    ├── Tokens (GPT-2): avg={avg_tokens:.1f}, min={min_tokens_stat}, max={max_tokens_stat}")
         print(f"    ├── Chars: avg={avg_chars:.1f}, min={min_chars}, max={max_chars}")
         print(f"    └── Bytes: avg={avg_bytes:.1f}, min={min_bytes_stat}, max={max_bytes_stat}")
 
@@ -156,8 +177,8 @@ def main():
     parser.add_argument(
         "--max-tokens",
         type=lambda x: None if x.lower() == "none" else int(x),
-        default=3999,
-        help="Maximum token count using GPT-2 tokenizer, or 'none' to disable (default: 3999)",
+        default=3800,
+        help="Maximum token count across all tokenizers, or 'none' to disable (default: 3800)",
     )
     parser.add_argument(
         "--max-bytes",
@@ -168,7 +189,15 @@ def main():
 
     args = parser.parse_args()
 
-    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    # Load all tokenizers
+    print("Loading tokenizers...")
+    tokenizers = []
+    tokenizer_names = TOKENIZER_MODELS
+    for model_name in tokenizer_names:
+        print(f"  Loading {model_name}...")
+        tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        tokenizers.append(tokenizer)
+    print(f"  Loaded {len(tokenizers)} tokenizers")
 
     input_path = Path(args.input_path)
 
@@ -189,7 +218,15 @@ def main():
         print(f"{'='*60}")
         print(f"  Output: {output_path}")
         num_samples = process_file(
-            input_path, output_path, args.cut_off_length, args.max_sample, args.search_range, args.max_tokens, args.max_bytes, tokenizer
+            input_path,
+            output_path,
+            args.cut_off_length,
+            args.max_sample,
+            args.search_range,
+            args.max_tokens,
+            args.max_bytes,
+            tokenizers,
+            tokenizer_names,
         )
         print(f"{'='*60}")
         print(f"Done: {num_samples} samples processed")
@@ -218,7 +255,15 @@ def main():
             output_file = output_dir / f"{jsonl_file.stem}_cutoff{jsonl_file.suffix}"
             print(f"\n[{i}/{len(jsonl_files)}] {jsonl_file.name} -> {output_file.name}")
             num_samples = process_file(
-                jsonl_file, output_file, args.cut_off_length, args.max_sample, args.search_range, args.max_tokens, args.max_bytes, tokenizer
+                jsonl_file,
+                output_file,
+                args.cut_off_length,
+                args.max_sample,
+                args.search_range,
+                args.max_tokens,
+                args.max_bytes,
+                tokenizers,
+                tokenizer_names,
             )
             total_samples += num_samples
 
