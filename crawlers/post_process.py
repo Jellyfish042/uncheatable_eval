@@ -11,6 +11,9 @@ TOKENIZER_MODELS = [
     "Qwen/Qwen3-0.6B-Base",
     "meta-llama/Llama-2-7b-hf",
     "EleutherAI/gpt-neox-20b",
+    "HuggingFaceTB/SmolLM2-135M",
+    "tiiuae/Falcon-H1-0.5B-Base",
+    "mistralai/Mistral-7B-v0.1",
 ]
 
 
