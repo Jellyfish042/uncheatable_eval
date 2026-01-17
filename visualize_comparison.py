@@ -18,11 +18,14 @@ Color scheme (based on deviation from average delta):
 
 import argparse
 import json
+import math
 import os
 import re
 from typing import List, Tuple, Optional, Set
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
+
+COMPRESSION_RATE_FACTOR = (1.0 / math.log(2.0)) * 0.125 * 100.0
 
 from helpers import TokenizerBytesConverter
 
@@ -242,8 +245,15 @@ def delta_to_color(delta: float, avg_delta: float, max_deviation: float) -> Tupl
 
 
 def get_font(size: int = 14) -> ImageFont.FreeTypeFont:
-    """Get a monospace font, with fallbacks for different systems."""
+    """Get a monospace font with Chinese character support, with fallbacks for different systems."""
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    support_dir = os.path.join(script_dir, "support")
+
     font_candidates = [
+        # Bundled font in support directory (highest priority for Chinese support)
+        os.path.join(support_dir, "NotoSansMonoCJKsc-Regular.otf"),
+        # System fonts as fallback
         "consola.ttf",  # Windows Consolas
         "cour.ttf",  # Windows Courier New
         "DejaVuSansMono.ttf",  # Linux
@@ -260,6 +270,7 @@ def get_font(size: int = 14) -> ImageFont.FreeTypeFont:
             continue
 
     # Fallback to default font
+    print("Warning: Could not find any suitable font. Chinese characters may not display correctly.")
     return ImageFont.load_default()
 
 
@@ -354,22 +365,29 @@ def calculate_text_layout(
             char = "    "  # Replace tab with 4 spaces
 
         for c in char if char == "    " else [char]:
+            # 动态计算字符实际宽度
+            try:
+                actual_char_width = font.getlength(c)
+            except:
+                actual_char_width = char_width  # 后备值
+
             current_line.append(
                 {
                     "char": c if c != "    " else " ",
                     "color": color,
                     "x": x,
                     "y": y,
+                    "width": actual_char_width,
                 }
             )
-            x += char_width
+            x += actual_char_width
             max_x = max(max_x, x)
 
     if current_line:
         lines.append(current_line)
 
-    image_width = max(max_x + 40, 400)
-    image_height = y + line_height + 20
+    image_width = int(max(max_x + 40, 400))
+    image_height = int(y + line_height + 20)
 
     return lines, avg_delta, max_deviation, image_width, image_height
 
@@ -406,9 +424,10 @@ def generate_image(
         char_width=int(char_width),
     )
 
-    # Calculate average losses
-    avg_loss_a = sum(byte_losses_a) / len(byte_losses_a) if byte_losses_a else 0
-    avg_loss_b = sum(byte_losses_b) / len(byte_losses_b) if byte_losses_b else 0
+    # Calculate average compression rates
+    avg_compression_a = sum(byte_losses_a) / len(byte_losses_a) * COMPRESSION_RATE_FACTOR if byte_losses_a else 0
+    avg_compression_b = sum(byte_losses_b) / len(byte_losses_b) * COMPRESSION_RATE_FACTOR if byte_losses_b else 0
+    avg_delta_compression = avg_delta * COMPRESSION_RATE_FACTOR
 
     # Header height
     header_height = 120
@@ -436,11 +455,11 @@ def generate_image(
 
     # Stats
     stats_x = 450
-    draw.text((stats_x, y_offset), f"Avg Loss A: {avg_loss_a:.4f}", fill=(200, 200, 200), font=small_font)
-    draw.text((stats_x, y_offset + line_spacing), f"Avg Loss B: {avg_loss_b:.4f}", fill=(200, 200, 200), font=small_font)
+    draw.text((stats_x, y_offset), f"Compression A: {avg_compression_a:.2f}%", fill=(200, 200, 200), font=small_font)
+    draw.text((stats_x, y_offset + line_spacing), f"Compression B: {avg_compression_b:.2f}%", fill=(200, 200, 200), font=small_font)
 
     delta_color = (100, 255, 100) if avg_delta < 0 else (255, 100, 100)
-    draw.text((stats_x + 200, y_offset), f"Avg Delta: {avg_delta:+.4f}", fill=delta_color, font=small_font)
+    draw.text((stats_x + 200, y_offset), f"Avg Delta: {avg_delta_compression:+.2f}%", fill=delta_color, font=small_font)
 
     # Draw legend
     legend_y = y_offset + line_spacing * 2 + 5
@@ -476,10 +495,11 @@ def generate_image(
             y = text_y_offset + char_info["y"]
             color = char_info["color"]
             char = char_info["char"]
+            width = char_info.get("width", char_width)  # 使用实际宽度
 
             # Draw background rectangle
             draw.rectangle(
-                [(x, y), (x + int(char_width), y + int(line_height) - 2)],
+                [(x, y), (x + int(width), y + int(line_height) - 2)],
                 fill=color,
             )
 
@@ -581,9 +601,10 @@ def generate_html(
     max_deviation = float(np.percentile(abs_deviations, 100)) if abs_deviations else 0
     max_deviation = max(max_deviation, 1e-6)
 
-    # Calculate average losses
-    avg_loss_a = sum(byte_losses_a) / len(byte_losses_a) if byte_losses_a else 0
-    avg_loss_b = sum(byte_losses_b) / len(byte_losses_b) if byte_losses_b else 0
+    # Calculate average compression rates
+    avg_compression_a = sum(byte_losses_a) / len(byte_losses_a) * COMPRESSION_RATE_FACTOR if byte_losses_a else 0
+    avg_compression_b = sum(byte_losses_b) / len(byte_losses_b) * COMPRESSION_RATE_FACTOR if byte_losses_b else 0
+    avg_delta_compression = avg_delta * COMPRESSION_RATE_FACTOR
 
     # Get token info from both tokenizers (for display purposes)
     text_bytes = text.encode("utf-8")
@@ -682,10 +703,10 @@ def generate_html(
         losses_a = byte_losses_a[byte_start:byte_end]
         losses_b = byte_losses_b[byte_start:byte_end]
 
-        # Format byte-wise data for tooltip
+        # Format byte-wise data for tooltip (convert to compression rate)
         bytes_str = " ".join([f"{b:02x}" for b in raw_bytes])
-        losses_a_str = " ".join([f"{l:.2f}" for l in losses_a])
-        losses_b_str = " ".join([f"{l:.2f}" for l in losses_b])
+        compression_a_str = " ".join([f"{l * COMPRESSION_RATE_FACTOR:.2f}%" for l in losses_a])
+        compression_b_str = " ".join([f"{l * COMPRESSION_RATE_FACTOR:.2f}%" for l in losses_b])
 
         # Get topk predictions for this token position (if available)
         # Decode token IDs to text and store in format: [actual_id, rank, [[id, prob, text], ...]]
@@ -743,9 +764,9 @@ def generate_html(
             f'data-qwen="{escape_for_attr(qwen_info)}" '
             f'data-rwkv="{escape_for_attr(rwkv_info)}" '
             f'data-bytes="{escape_for_attr(bytes_str)}" '
-            f'data-loss-a="{escape_for_attr(losses_a_str)}" '
-            f'data-loss-b="{escape_for_attr(losses_b_str)}" '
-            f'data-delta="{avg_token_delta:.6f}" '
+            f'data-compression-a="{escape_for_attr(compression_a_str)}" '
+            f'data-compression-b="{escape_for_attr(compression_b_str)}" '
+            f'data-delta="{avg_token_delta * COMPRESSION_RATE_FACTOR:.4f}" '
             f'data-topk-a="{escape_for_attr(topk_a_json)}" '
             f'data-topk-b="{escape_for_attr(topk_b_json)}"'
         )
@@ -975,9 +996,9 @@ def generate_html(
         <div class="meta">
             <div>Model A: {model_a_name[:60]}</div>
             <div>Baseline (B): {model_b_name[:60]}</div>
-            <div>Avg Loss A: {avg_loss_a:.4f}</div>
-            <div>Avg Loss B: {avg_loss_b:.4f}</div>
-            <div style="color: {delta_color}">Avg Delta: {avg_delta:+.4f}</div>
+            <div>Compression A: {avg_compression_a:.2f}%</div>
+            <div>Compression B: {avg_compression_b:.2f}%</div>
+            <div style="color: {delta_color}">Avg Delta: {avg_delta_compression:+.2f}%</div>
         </div>
         <div class="legend">
             <div class="legend-item">
@@ -1094,8 +1115,8 @@ def generate_html(
                 const qwen = token.getAttribute('data-qwen') || 'N/A';
                 const rwkv = token.getAttribute('data-rwkv') || 'N/A';
                 const bytes = token.getAttribute('data-bytes') || '';
-                const lossA = token.getAttribute('data-loss-a') || '';
-                const lossB = token.getAttribute('data-loss-b') || '';
+                const compressionA = token.getAttribute('data-compression-a') || '';
+                const compressionB = token.getAttribute('data-compression-b') || '';
                 const top5A = token.getAttribute('data-topk-a') || '';
                 const top5B = token.getAttribute('data-topk-b') || '';
 
@@ -1133,11 +1154,11 @@ def generate_html(
 
                 let tooltipHtml = `
                     <div><span class="label">Bytes:</span> <span class="bytes">${{bytes || '(empty)'}}</span></div>
-                    <div><span class="label">Loss A:</span> <span class="loss-a">${{lossA || '(empty)'}}</span></div>
-                    <div><span class="label">Loss B:</span> <span class="loss-b">${{lossB || '(empty)'}}</span></div>
+                    <div><span class="label">Compression A:</span> <span class="loss-a">${{compressionA || '(empty)'}}</span></div>
+                    <div><span class="label">Compression B:</span> <span class="loss-b">${{compressionB || '(empty)'}}</span></div>
                     <hr style="border-color: #555; margin: 6px 0;">
-                    <div><span class="label">Qwen:</span> <span class="qwen">${{qwen || '(empty)'}}</span></div>
                     <div><span class="label">RWKV:</span> <span class="rwkv">${{rwkv || '(empty)'}}</span></div>
+                    <div><span class="label">Qwen:</span> <span class="qwen">${{qwen || '(empty)'}}</span></div>
                 `;
                 // Add topk predictions side by side
                 if (top5A || top5B) {{
@@ -1180,7 +1201,7 @@ def generate_html(
         }});
 
         // Saturation slider functionality
-        const avgDelta = {avg_delta};
+        const avgDelta = {avg_delta_compression};
         const slider = document.getElementById('saturation-slider');
         const saturationValue = document.getElementById('saturation-value');
 
@@ -1256,6 +1277,7 @@ def visualize_comparison(
     max_width: int = 1200,
     model_type_a: str = "hf",
     model_type_b: str = "hf",
+    generate_png: bool = False,
 ):
     """
     Generate image visualizations comparing two models' byte-wise losses.
@@ -1267,6 +1289,7 @@ def visualize_comparison(
         sample_index: Optional specific sample index to visualize (None = all)
         font_size: Font size for text rendering
         max_width: Maximum image width
+        generate_png: Whether to generate PNG images (default: False, only HTML)
     """
     # Load results
     results_a = load_results(model_a_path)
@@ -1302,7 +1325,7 @@ def visualize_comparison(
             try:
                 from rwkv.rwkv_tokenizer import TRIE_TOKENIZER
 
-                tokenizer_a = TRIE_TOKENIZER("rwkv_vocab_v20230424.txt")
+                tokenizer_a = TRIE_TOKENIZER("support/rwkv_vocab_v20230424.txt")
             except Exception as e:
                 print(f"Warning: Could not load RWKV tokenizer for model A: {e}")
 
@@ -1344,19 +1367,20 @@ def visualize_comparison(
         byte_losses_a = losses_a[idx]
         byte_losses_b = losses_b[idx]
 
-        # Generate PNG image
+        # Generate PNG image (only if requested)
         png_path = os.path.join(output_dir, f"sample_{idx:04d}.png")
-        generate_image(
-            sample_index=idx,
-            text=text,
-            byte_losses_a=byte_losses_a,
-            byte_losses_b=byte_losses_b,
-            model_a_name=model_a_name,
-            model_b_name=model_b_name,
-            output_path=png_path,
-            font_size=font_size,
-            max_width=max_width,
-        )
+        if generate_png:
+            generate_image(
+                sample_index=idx,
+                text=text,
+                byte_losses_a=byte_losses_a,
+                byte_losses_b=byte_losses_b,
+                model_a_name=model_a_name,
+                model_b_name=model_b_name,
+                output_path=png_path,
+                font_size=font_size,
+                max_width=max_width,
+            )
 
         # Generate HTML file
         html_path = os.path.join(output_dir, f"sample_{idx:04d}.html")
@@ -1376,7 +1400,10 @@ def visualize_comparison(
             model_type_b=model_type_b,
         )
 
-        print(f"Generated: {png_path}, {html_path}")
+        if generate_png:
+            print(f"Generated: {png_path}, {html_path}")
+        else:
+            print(f"Generated: {html_path}")
 
     print(f"\nVisualization complete. {len(list(indices))} sample(s) saved to {output_dir}")
 
@@ -1431,6 +1458,11 @@ def main():
         default="hf",
         help="Model type for model B: hf, rwkv, rwkv7 (default: hf)",
     )
+    parser.add_argument(
+        "--generate_png",
+        action="store_true",
+        help="Generate PNG images (default: only generate HTML)",
+    )
 
     args = parser.parse_args()
 
@@ -1443,6 +1475,7 @@ def main():
         max_width=args.max_width,
         model_type_a=args.model_type_a,
         model_type_b=args.model_type_b,
+        generate_png=args.generate_png,
     )
 
 
