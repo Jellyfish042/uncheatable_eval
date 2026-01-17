@@ -12,8 +12,11 @@ class WikipediaSpider(scrapy.Spider):
 
     custom_settings = {
         "ITEM_PIPELINES": {
+            "crawler.pipelines.SpecialCharFilterPipeline": 50,
             "crawler.pipelines.LengthFilterPipeline": 100,
+            "crawler.pipelines.DateRangeFilterPipeline": 150,
             "crawler.pipelines.MinHashLSHDuplicateFilterPipeline": 300,
+            "crawler.pipelines.LanguageBalanceCounterPipeline": 350,
             "crawler.pipelines.JsonWriterPipeline": 400,
         },
         "CLOSESPIDER_ITEMCOUNT": 500,
@@ -151,14 +154,28 @@ class WikipediaSpider(scrapy.Spider):
         self.language_item_counts = defaultdict(int)
         self.balance_languages = language in ("nonenglish", "all")
         if self.balance_languages:
-            self.logger.info(f"Language balancing enabled: {len(self.languages)} languages, priority-based")
-
             # Date range queue for each language (for efficient request scheduling)
             self.language_date_queues = {}
             date_list = self.get_date_list(start_date, end_date)
             date_ranges = [(date_list[i], date_list[i + 1]) for i in range(len(date_list) - 1)]
             for lang in self.languages:
                 self.language_date_queues[lang] = list(date_ranges)
+
+            # Exhaustion detection: track pending requests and empty responses
+            self.language_exhausted = set()
+            self.language_pending_requests = defaultdict(int)
+            self.language_empty_responses = defaultdict(int)
+
+            # Quota management: dynamic quota per language
+            self.total_target = self.custom_settings.get("CLOSESPIDER_ITEMCOUNT", 500)
+            self.base_quota_per_language = self.total_target // len(self.languages)
+            self.language_quota = {lang: self.base_quota_per_language for lang in self.languages}
+
+            # Configuration
+            self.EMPTY_RESPONSE_THRESHOLD = 3
+
+            self.logger.info(f"Language balancing enabled: {len(self.languages)} languages, "
+                           f"{self.base_quota_per_language} items per language")
 
     def start_requests(self):
         if self.balance_languages:
@@ -196,8 +213,18 @@ class WikipediaSpider(scrapy.Spider):
 
     def _create_date_range_request(self, lang):
         """Create a request for the next date range of a language. Returns a list of requests."""
+        # Check if language is exhausted
+        if lang in self.language_exhausted:
+            return []
+
+        # Check if language has reached its quota (considering pending requests)
+        effective_count = self.language_item_counts[lang] + self.language_pending_requests[lang]
+        if effective_count >= self.language_quota.get(lang, float('inf')):
+            return []
+
         # Check if date queue is empty
         if not self.language_date_queues.get(lang):
+            self._check_language_exhaustion(lang)
             return []
 
         start_date, end_date = self.language_date_queues[lang].pop(0)
@@ -221,8 +248,11 @@ class WikipediaSpider(scrapy.Spider):
         }
 
         url = f"{api_url}?{urlencode(params)}"
-        # Priority: languages with fewer items get higher priority (lower number = higher priority)
-        priority = -self.language_item_counts[lang]
+        priority = self._calculate_priority(lang)
+
+        # Track pending request
+        self.language_pending_requests[lang] += 1
+
         return [scrapy.Request(
             url=url,
             callback=self.parse_recent_changes,
@@ -230,20 +260,126 @@ class WikipediaSpider(scrapy.Spider):
             priority=priority,
         )]
 
-    def parse_recent_changes(self, response):
-        data = response.json()
+    def _calculate_priority(self, lang):
+        """Calculate request priority based on quota completion ratio."""
+        if lang in self.language_exhausted:
+            return -10000  # Lowest priority for exhausted languages
 
-        if "error" in data:
-            self.logger.error(f"API Error: {data['error']}")
+        current = self.language_item_counts[lang]
+        quota = self.language_quota.get(lang, self.base_quota_per_language)
+        completion_ratio = current / quota if quota > 0 else 1.0
+
+        # Higher priority (larger number) for languages with lower completion ratio
+        return int((1 - completion_ratio) * 1000)
+
+    def _mark_language_exhausted(self, lang, reason=""):
+        """Mark a language as exhausted and trigger quota redistribution."""
+        if lang not in self.language_exhausted:
+            self.language_exhausted.add(lang)
+            self.logger.info(f"Language '{lang}' marked as exhausted. Reason: {reason}. "
+                           f"Items collected: {self.language_item_counts[lang]}")
+            self._redistribute_quota()
+
+    def _check_language_exhaustion(self, lang):
+        """Check if a language should be marked as exhausted."""
+        if lang in self.language_exhausted:
+            return True
+
+        # Condition 1: Date queue is empty
+        queue_empty = not self.language_date_queues.get(lang)
+
+        # Condition 2: No pending requests
+        no_pending = self.language_pending_requests[lang] <= 0
+
+        # Condition 3: Too many consecutive empty responses
+        too_many_empty = self.language_empty_responses[lang] >= self.EMPTY_RESPONSE_THRESHOLD
+
+        if queue_empty and no_pending:
+            self._mark_language_exhausted(lang, "date queue empty and no pending requests")
+            return True
+
+        if too_many_empty:
+            self._mark_language_exhausted(lang, f"consecutive empty responses >= {self.EMPTY_RESPONSE_THRESHOLD}")
+            return True
+
+        return False
+
+    def _redistribute_quota(self):
+        """Redistribute quota from exhausted languages to active ones."""
+        active_languages = [l for l in self.languages if l not in self.language_exhausted]
+
+        if not active_languages:
+            self.logger.warning("All languages exhausted!")
             return
 
+        # Calculate remaining quota to distribute
+        current_total = sum(self.language_item_counts.values())
+        remaining = max(0, self.total_target - current_total)
+
+        # Distribute remaining quota, ensuring at least 1 per language if there's any remaining
+        base_extra = remaining // len(active_languages) if active_languages else 0
+        remainder = remaining % len(active_languages) if active_languages else 0
+
+        for i, lang in enumerate(active_languages):
+            # Give first 'remainder' languages an extra 1
+            extra = base_extra + (1 if i < remainder else 0)
+            self.language_quota[lang] = self.language_item_counts[lang] + extra
+
+        self.logger.info(f"Quota redistributed. Active: {len(active_languages)}, "
+                        f"Exhausted: {len(self.language_exhausted)}, Remaining: {remaining}")
+
+        # Proactively create requests for idle languages that got extra quota
+        if hasattr(self, 'crawler') and self.crawler:
+            for lang in active_languages:
+                if self.language_pending_requests[lang] == 0:
+                    if self.language_item_counts[lang] < self.language_quota.get(lang, 0):
+                        for request in self._create_date_range_request(lang):
+                            self.crawler.engine.crawl(request)
+
+    def _log_balance_stats(self):
+        """Log language balance statistics."""
+        stats = []
+        for lang in sorted(self.languages):
+            count = self.language_item_counts[lang]
+            quota = self.language_quota.get(lang, 0)
+            status = "EXHAUSTED" if lang in self.language_exhausted else "active"
+            stats.append(f"{lang}: {count}/{quota} ({status})")
+
+        self.logger.info(f"Language balance stats: {', '.join(stats)}")
+
+    def parse_recent_changes(self, response):
+        data = response.json()
         lang = response.meta["lang"]
         api_url = response.meta["api_url"]
         variant = response.meta["variant"]
-        website_prefix = api_url.replace("/w/api.php", "")
 
+        # Decrease pending count for this response
+        if self.balance_languages:
+            self.language_pending_requests[lang] = max(0, self.language_pending_requests[lang] - 1)
+
+        if "error" in data:
+            self.logger.error(f"API Error for {lang}: {data['error']}")
+            if self.balance_languages:
+                self._check_language_exhaustion(lang)
+            return
+
+        website_prefix = api_url.replace("/w/api.php", "")
         recent_changes = data.get("query", {}).get("recentchanges", [])
+
+        # Track empty responses for exhaustion detection
+        if self.balance_languages:
+            if not recent_changes:
+                self.language_empty_responses[lang] += 1
+            else:
+                self.language_empty_responses[lang] = 0
+
         for change in recent_changes:
+            # Check if language has reached its quota (considering pending requests)
+            if self.balance_languages:
+                effective_count = self.language_item_counts[lang] + self.language_pending_requests[lang]
+                if effective_count >= self.language_quota.get(lang, float('inf')):
+                    break
+
             title = change["title"]
             timestamp = change["timestamp"]
 
@@ -253,8 +389,12 @@ class WikipediaSpider(scrapy.Spider):
 
             content_url = f"{api_url}?{urlencode(content_params)}"
 
-            # In balanced mode, prioritize content requests for languages with fewer items
-            priority = -self.language_item_counts[lang] if self.balance_languages else 0
+            priority = self._calculate_priority(lang) if self.balance_languages else 0
+
+            # Track pending content request
+            if self.balance_languages:
+                self.language_pending_requests[lang] += 1
+
             yield scrapy.Request(
                 url=content_url,
                 callback=self.parse_content,
@@ -268,7 +408,12 @@ class WikipediaSpider(scrapy.Spider):
             next_params.update(continue_params)
 
             next_url = f"{api_url}?{urlencode(next_params)}"
-            priority = -self.language_item_counts[lang] if self.balance_languages else 0
+            priority = self._calculate_priority(lang) if self.balance_languages else 0
+
+            # Track pending continue request
+            if self.balance_languages:
+                self.language_pending_requests[lang] += 1
+
             yield scrapy.Request(
                 url=next_url,
                 callback=self.parse_recent_changes,
@@ -279,22 +424,36 @@ class WikipediaSpider(scrapy.Spider):
             # No more pages for this date range, schedule next date range for this language
             for next_request in self._create_date_range_request(lang):
                 yield next_request
+            # Check if language should be marked as exhausted
+            if not self.language_date_queues.get(lang):
+                self._check_language_exhaustion(lang)
 
     def parse_content(self, response):
         data = response.json()
+        lang = response.meta["lang"]
+
+        # Decrease pending count for this response
+        if self.balance_languages:
+            self.language_pending_requests[lang] = max(0, self.language_pending_requests[lang] - 1)
+
+            # Replenish requests: only trigger when pending reaches 0 to avoid over-consuming date queue
+            pending = self.language_pending_requests[lang]
+            if pending == 0 and lang not in self.language_exhausted:
+                effective_count = self.language_item_counts[lang]
+                quota = self.language_quota.get(lang, float('inf'))
+                if effective_count < quota:
+                    for next_request in self._create_date_range_request(lang):
+                        yield next_request
+
+            # Check if language should be marked as exhausted
+            self._check_language_exhaustion(lang)
 
         if "error" in data or "parse" not in data:
             return
 
-        lang = response.meta["lang"]
-
         html_content = data["parse"]["text"]["*"]
 
         soup = BeautifulSoup(html_content, "html.parser")
-
-        # self.logger.info("-" * 100)
-        # self.logger.info(f"Soup: {soup.prettify()}")
-        # self.logger.info("-" * 100)
 
         if soup.find(class_="redirectMsg"):
             return
@@ -331,10 +490,6 @@ class WikipediaSpider(scrapy.Spider):
             "entry_created_at": response.meta["date"],
             "crawled_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
-
-        # Update language count for balancing
-        if self.balance_languages:
-            self.language_item_counts[lang] += 1
 
         yield item
 

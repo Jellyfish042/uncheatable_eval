@@ -279,7 +279,8 @@ class Evaluator:
 
     @staticmethod
     def calculate_log_sum(logits, target_token_ids, reduction="none"):
-        return F.cross_entropy(logits[:-1], target_token_ids[1:], reduction=reduction)
+        # return F.cross_entropy(logits[:-1].float(), target_token_ids[1:], reduction=reduction)
+        return F.cross_entropy(logits[:-1].to(torch.bfloat16), target_token_ids[1:], reduction=reduction)
 
     @staticmethod
     def _extract_topk_predictions(logit, target_ids, k=10):
@@ -342,6 +343,7 @@ class Evaluator:
         rwkv_test_data = []
         rwkv_token_length_list = []
         char_count = []
+        chunking_warning_shown = False
 
         if track_byte_wise_data:
             max_byte_size = max(len(text.encode("utf-8")) for text in texts)
@@ -365,12 +367,32 @@ class Evaluator:
 
             input_length = len(input_seq)
 
+            if not chunking_warning_shown and input_length > chunk_size:
+                print(
+                    f"Warning: Test sequence length ({input_length}) exceeds chunk_size ({chunk_size}). "
+                    "This may be unfair when comparing models with different tokenizers."
+                )
+                chunking_warning_shown = True
+
             neg_log_prob_temp = 0
             for begin in range(0, input_length, chunk_size):
 
                 input_chunk = [0] + input_seq[begin : begin + chunk_size]
 
-                logit = model.forward(input_chunk, None, full_output=True)[0]
+                if hasattr(tokenized, "ids"):
+                    logit = model.forward(input_chunk, None, full_output=True)[0]
+                else:
+                    CHUNK_LEN = 1024
+                    state = None
+                    logit = torch.empty((0, 65536), device="cuda")
+                    while len(input_chunk) > 0:
+                        out, state = model.forward(input_chunk[:CHUNK_LEN], state, full_output=True)
+                        if len(input_chunk) == 1:
+                            out = out.unsqueeze(0)
+                        input_chunk = input_chunk[CHUNK_LEN:]
+                        logit = torch.concat((logit, out), dim=0)
+
+                    input_chunk = [0] + input_seq[begin : begin + chunk_size]
 
                 if len(input_chunk) == 1:
                     logit = logit.unsqueeze(0)
@@ -442,6 +464,7 @@ class Evaluator:
         data = []
         token_length_list = []
         char_count = []
+        chunking_warning_shown = False
 
         if bos_mode in ["add_default_bos", "replace_with_bos"]:
             bos_token = tokenizer.bos_token_id
@@ -468,6 +491,13 @@ class Evaluator:
             seq_length = inputs["input_ids"].shape[-1]
             assert seq_length > 1, f"Sequence {sample} is too short"
 
+            if not chunking_warning_shown and seq_length > chunk_size:
+                print(
+                    f"Warning: Test sequence length ({seq_length}) exceeds chunk_size ({chunk_size}). "
+                    "This may be unfair when comparing models with different tokenizers."
+                )
+                chunking_warning_shown = True
+
             neg_log_prob_temp = 0
             for begin in range(0, seq_length, chunk_size):
                 input_chunk = inputs["input_ids"][:, begin : begin + chunk_size]
@@ -484,11 +514,9 @@ class Evaluator:
             if track_byte_wise_data:  # track byte-wise data is not compatible with chunking, so here we will get the whole sequence's loss
                 per_token_bytes = token2bytes_convert_func(sample)
                 all_bytes = [byte for token in per_token_bytes for byte in token]
-                if all_bytes != list(sample.encode("utf-8")):
-                    print("Bytes after decoding are not the same as the original bytes, this may cause unexpected results")
-                # assert all_bytes == list(
-                #     sample.encode("utf-8")
-                # ), "All bytes are not the same, this model and tokenizer are not compatible with tracking byte-wise data mode"
+                assert all_bytes == list(
+                    sample.encode("utf-8")
+                ), "All bytes are the same as the original string, this model and tokenizer are not compatible with tracking byte-wise data mode"
                 assert len(per_token_bytes) == loss.shape[0], "Number of tokens and loss are not the same"
 
                 # Extract topk predictions if enabled
@@ -499,8 +527,26 @@ class Evaluator:
                     single_sample_top5_predictions.append(sample_topk)
 
                 sample_byte_losses = []  # for single sample tracking
+                # Why this so complicated?
+                # This is to handle the edge case of empty byte lists from some tokenizers.
+                # When text starts with some fancy characters, some tokenizers
+                # produces a standalone '▁' token that maps to empty bytes after strip_leading_space.
+                # This '▁' token has a valid loss but no corresponding original text bytes.
+                # Solution: Merge empty token's loss into the next non-empty token, preserving
+                # total loss as joint probability: -log P(▁, next_token | context).
+
+                pending_loss = 0.0  # Accumulated loss from empty tokens to be merged
+
                 for l, byte_values in zip(loss, per_token_bytes):
-                    per_byte_loss = l.item() / len(byte_values)
+                    current_loss = l.item() + pending_loss
+                    pending_loss = 0.0
+
+                    if len(byte_values) == 0:
+                        # Empty token (e.g., '▁' stripped to empty), accumulate its loss
+                        pending_loss = current_loss
+                        continue
+
+                    per_byte_loss = current_loss / len(byte_values)
                     for _ in range(len(byte_values)):
                         byte_wise_loss_sum[byte_index] += per_byte_loss
                         byte_wise_counts[byte_index] += 1
@@ -511,6 +557,17 @@ class Evaluator:
                 if track_single_sample_byte_wise_data:
                     single_sample_texts.append(sample)
                     single_sample_byte_wise_losses.append(sample_byte_losses)
+
+                if pending_loss > 0:
+                    print(f"Warning: Unassigned loss at end of sequence: {pending_loss}")
+
+                # Simpler version without empty byte handling, works for most tokenizers:
+                # for l, byte_values in zip(loss, per_token_bytes):
+                #     per_byte_loss = l.item() / len(byte_values)  # ZeroDivisionError if empty
+                #     for _ in range(len(byte_values)):
+                #         byte_wise_loss_sum[byte_index] += per_byte_loss
+                #         byte_wise_counts[byte_index] += 1
+                #         byte_index += 1
 
             token_length_list.append(seq_length)
             data.append(neg_log_prob_temp)
@@ -628,7 +685,7 @@ class Evaluator:
 
         # load TokenizerBytesConverter if check_byte_wise_data is True
         if config.track_byte_wise_data and config.model_type in ["hf", "mamba", "mistral", "modelscope"]:
-            tokenizer_bytes_converter = TokenizerBytesConverter(config.tokenizer_name, config.cache, **config.tokenizer_args)
+            tokenizer_bytes_converter = TokenizerBytesConverter(config.tokenizer_name, config.cache, tokenizer=tokenizer, **config.tokenizer_args)
             token2bytes_convert_func = tokenizer_bytes_converter.encode_to_bytes
         else:
             tokenizer_bytes_converter = None

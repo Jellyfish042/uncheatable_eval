@@ -39,3 +39,11 @@ class ArxivPaperItem(scrapy.Item):
     url = scrapy.Field()
     date = scrapy.Field()
     metadata = scrapy.Field()
+
+
+class BiorxivPaperItem(scrapy.Item):
+    content = scrapy.Field()
+    category = scrapy.Field()
+    url = scrapy.Field()
+    date = scrapy.Field()
+    metadata = scrapy.Field()

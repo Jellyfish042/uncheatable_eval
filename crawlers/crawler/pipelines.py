@@ -4,6 +4,19 @@ import os
 from datasketch import MinHash, MinHashLSH
 
 
+class SpecialCharFilterPipeline:
+    """
+    Pipeline to filter items containing U+2581 character.
+    """
+
+    def process_item(self, item, spider):
+        content = item.get("content", "")
+        if "\u2581" in content:
+            spider.logger.info("Content contains U+2581 character, dropping item.")
+            raise DropItem("Content contains U+2581 character.")
+        return item
+
+
 class LengthFilterPipeline:
     def __init__(self, min_len, cut_off_len):
         self.min_len = min_len
@@ -87,6 +100,46 @@ class MinHashLSHDuplicateFilterPipeline:
             spider.logger.info(f"Duplicate content found: {result[:100]}")
             raise DropItem(f"Duplicate content found.")
         self.lsh.insert(item["url"], m)
+        return item
+
+
+class DateRangeFilterPipeline:
+    """
+    Pipeline to filter items based on date range.
+    Drops items whose date is outside the spider's start_date and end_date.
+    """
+
+    def process_item(self, item, spider):
+        item_date = item.get("date", "")[:10]  # Extract YYYY-MM-DD
+        start_date = getattr(spider, "start_date", None)
+        end_date = getattr(spider, "end_date", None)
+
+        if start_date and end_date and item_date:
+            if item_date < start_date or item_date > end_date:
+                spider.logger.info(f"Date {item_date} out of range [{start_date}, {end_date}].")
+                raise DropItem(f"Date {item_date} out of range.")
+
+        return item
+
+
+class LanguageBalanceCounterPipeline:
+    """
+    Pipeline to accurately count items per language after all filters.
+    Only counts items that have passed all previous filtering pipelines.
+    """
+
+    def process_item(self, item, spider):
+        # Check if spider has language balancing enabled
+        if getattr(spider, 'balance_languages', False):
+            lang = item.get('metadata', {}).get('language')
+            if lang and hasattr(spider, 'language_item_counts'):
+                spider.language_item_counts[lang] += 1
+
+                # Log stats periodically
+                total = sum(spider.language_item_counts.values())
+                if total % 50 == 0:
+                    spider._log_balance_stats()
+
         return item
 
 
