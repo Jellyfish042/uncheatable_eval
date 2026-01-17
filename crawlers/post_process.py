@@ -180,7 +180,7 @@ def main():
     parser.add_argument(
         "--max-tokens",
         type=lambda x: None if x.lower() == "none" else int(x),
-        default=3800,
+        default=3584,
         help="Maximum token count across all tokenizers, or 'none' to disable (default: 3800)",
     )
     parser.add_argument(
