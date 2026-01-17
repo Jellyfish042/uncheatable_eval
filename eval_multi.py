@@ -4,43 +4,14 @@ import torch
 import gc
 
 data_list = [
-<<<<<<< HEAD
-    # "Jellyfish042/UncheatableEval-2025-12-Long",
-    # "Jellyfish042/UncheatableEval-2025-12",
-    "support/uncheatable_eval_dev.jsonl",
-=======
     "Jellyfish042/UncheatableEval-2026-01",
     # "Jellyfish042/UncheatableEval-2026-01-Long",
->>>>>>> master
 ]
 
 MY_CACHE_DIR = None
 RWKV_CACHE_DIR = None
 
 config_list = [
-<<<<<<< HEAD
-    EvaluationConfig(
-        model_name_or_path="rwkv7-g1c-1.5b-20260110-ctx8192.pth",
-        tokenizer_name="rwkv_vocab_v20230424",
-        model_type="rwkv7",
-        data=data_list,
-        enable_chunking=False,
-        track_byte_wise_data=True,
-        track_single_sample_byte_wise_data=True,
-    ),
-    EvaluationConfig(
-        model_name_or_path="Qwen/Qwen3-1.7B-Base",
-        tokenizer_name="Qwen/Qwen3-1.7B-Base",
-        model_type="hf",
-        data=data_list,
-        cache=MY_CACHE_DIR,
-        bos_mode="add_newline_token",
-        model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
-        enable_chunking=False,
-        track_byte_wise_data=True,
-        track_single_sample_byte_wise_data=True,
-    ),
-=======
     ##### < 1b models #####
     # EvaluationConfig(
     #     model_name_or_path="google/gemma-3-270m",
@@ -687,7 +658,6 @@ config_list = [
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_newline_token",
     # ),
->>>>>>> master
 ]
 
 
