@@ -1,6 +1,6 @@
 # Uncheatable Eval
 
-[![DOI](https://zenodo.org/badge/732357528.svg)](https://zenodo.org/doi/10.5281/zenodo.11284692) [![Leaderboard](https://img.shields.io/badge/%F0%9F%8F%86%20Leaderboard-Gradio-ff7c00)](https://huggingface.co/spaces/Jellyfish042/UncheatableEval) [![Data](https://img.shields.io/badge/%F0%9F%A4%97%20Data-HuggingFace-yellow)](https://huggingface.co/collections/Jellyfish042/uncheatableeval) [![Compression-Lens](https://img.shields.io/badge/%F0%9F%94%AC%20Compression--Lens-Visualization-blue)](E:\codebase\UncheatableEval_Lens\app.py)
+[![DOI](https://zenodo.org/badge/732357528.svg)](https://zenodo.org/doi/10.5281/zenodo.11284692) [![Leaderboard](https://img.shields.io/badge/%F0%9F%8F%86%20Leaderboard-Gradio-ff7c00)](https://huggingface.co/spaces/Jellyfish042/UncheatableEval) [![Data](https://img.shields.io/badge/%F0%9F%A4%97%20Data-HuggingFace-yellow)](https://huggingface.co/collections/Jellyfish042/uncheatableeval) [![Compression-Lens](https://img.shields.io/badge/%F0%9F%94%AC%20Compression--Lens-Visualization-blue)](https://huggingface.co/spaces/Jellyfish042/Compression-Lens)
 
 ## Introduction
 Traditional LLM benchmarks are easily compromised by unintentional or intentional data leakage, making many benchmarks unreliable and unable to truly reflect the capabilities of LLMs.
