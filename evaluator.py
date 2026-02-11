@@ -226,6 +226,26 @@ class Evaluator:
 
         return rwkv_model, rwkv_tokenizer
 
+    def load_rwkv7a(self, config: EvaluationConfig):
+        os.environ["RWKV_JIT_ON"] = "1"
+        os.environ["RWKV_CUDA_ON"] = "1"
+        os.environ["RWKV_V7_ON"] = "1"
+        os.environ["RWKV_DE_VERSION"] = "1"
+
+        from rwkv.model import RWKV
+        from rwkv.utils import PIPELINE
+
+        if config.model_args.get("strategy") is not None:
+            rwkv_model = RWKV(model=config.model_name_or_path.replace(".pth", ""), strategy=config.model_args.get("strategy"))
+        else:
+            rwkv_model = RWKV(model=config.model_name_or_path.replace(".pth", ""), strategy="cuda fp16")
+        rwkv_pipeline = PIPELINE(rwkv_model, config.tokenizer_name)
+        rwkv_tokenizer = rwkv_pipeline.tokenizer
+
+        self.print_rwkv7_parameters_in_billions(rwkv_model)
+
+        return rwkv_model, rwkv_tokenizer
+
     def load_mamba(self, config: EvaluationConfig):
         # state-spaces/mamba-2.8b-slimpj
         # pip install mamba-ssm
@@ -304,10 +324,7 @@ class Evaluator:
             actual_prob = probs[pos, target_id].item()
             rank = (probs[pos] > actual_prob).sum().item() + 1
 
-            topk_list = [
-                [top_ids[pos, i].item(), round(top_probs[pos, i].item(), 6)]
-                for i in range(k)
-            ]
+            topk_list = [[top_ids[pos, i].item(), round(top_probs[pos, i].item(), 6)] for i in range(k)]
             results.append([target_id, rank, topk_list])
 
         return results
@@ -410,9 +427,7 @@ class Evaluator:
 
                 # Extract topk predictions if enabled
                 if track_single_sample_byte_wise_data:
-                    sample_topk = self._extract_topk_predictions(
-                        logit[:-1], torch.tensor(input_chunk[1:]).cuda()
-                    )
+                    sample_topk = self._extract_topk_predictions(logit[:-1], torch.tensor(input_chunk[1:]).cuda())
                     single_sample_top5_predictions.append(sample_topk)
 
                 sample_byte_losses = []  # for single sample tracking
@@ -460,7 +475,9 @@ class Evaluator:
         return data_dict
 
     @torch.no_grad()
-    def eval_hf_model(self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data, token2bytes_convert_func, track_single_sample_byte_wise_data=False):
+    def eval_hf_model(
+        self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data, token2bytes_convert_func, track_single_sample_byte_wise_data=False
+    ):
         data = []
         token_length_list = []
         char_count = []
@@ -521,9 +538,7 @@ class Evaluator:
 
                 # Extract topk predictions if enabled
                 if track_single_sample_byte_wise_data:
-                    sample_topk = self._extract_topk_predictions(
-                        logit[:-1], input_chunk.squeeze(0)[1:]
-                    )
+                    sample_topk = self._extract_topk_predictions(logit[:-1], input_chunk.squeeze(0)[1:])
                     single_sample_top5_predictions.append(sample_topk)
 
                 sample_byte_losses = []  # for single sample tracking
@@ -674,6 +689,8 @@ class Evaluator:
             model, tokenizer = self.load_rwkv(config)
         elif config.model_type == "rwkv7":
             model, tokenizer = self.load_rwkv7(config)
+        elif config.model_type == "rwkv7a":
+            model, tokenizer = self.load_rwkv7a(config)
         elif config.model_type == "mamba":
             model, tokenizer = self.load_mamba(config)
         elif config.model_type == "mistral":
@@ -718,7 +735,7 @@ class Evaluator:
                             token2bytes_convert_func=token2bytes_convert_func,
                             track_single_sample_byte_wise_data=config.track_single_sample_byte_wise_data,
                         )
-                elif config.model_type in ["rwkv", "rwkv7"]:
+                elif config.model_type in ["rwkv", "rwkv7", "rwkv7a"]:
                     results = self.eval_rwkv(
                         model=model,
                         tokenizer=tokenizer,
@@ -751,7 +768,14 @@ class Evaluator:
                 self.make_log(results, config.log_path)
 
                 print(f"Finished evaluating {config.model_name_or_path} on {data_name}")
-                skip_keys = {"byte_wise_loss", "byte_wise_counts", "byte_wise_compression_rate", "single_sample_texts", "single_sample_byte_wise_losses", "single_sample_top5_predictions"}
+                skip_keys = {
+                    "byte_wise_loss",
+                    "byte_wise_counts",
+                    "byte_wise_compression_rate",
+                    "single_sample_texts",
+                    "single_sample_byte_wise_losses",
+                    "single_sample_top5_predictions",
+                }
                 filtered_results = {k: v for k, v in results.items() if k not in skip_keys}
                 print(json.dumps(filtered_results, indent=4, ensure_ascii=False, default=self.default_serializer))
                 print("-" * 80)
