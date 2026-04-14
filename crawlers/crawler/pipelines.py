@@ -1,6 +1,7 @@
 from scrapy.exceptions import DropItem
 import json
 import os
+import re
 from datasketch import MinHash, MinHashLSH
 
 
@@ -48,6 +49,25 @@ class GitHubDuplicateFilterPipeline:
             spider.logger.info(f"Author {author} already seen.")
             raise DropItem(f"Author {author} already seen.")
         self.seen_authors.add(author)
+        return item
+
+
+class GitHubLongTokenFilterPipeline:
+    def __init__(self, max_token_length=100):
+        self.max_token_length = max_token_length
+        self.long_token_pattern = re.compile(rf"[A-Za-z0-9+/=_-]{{{self.max_token_length + 1},}}")
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(max_token_length=crawler.settings.getint("GITHUB_MAX_CONTINUOUS_TOKEN_LENGTH", 100))
+
+    def process_item(self, item, spider):
+        content = item.get("content", "")
+        match = self.long_token_pattern.search(content)
+        if match:
+            token_length = len(match.group(0))
+            spider.logger.info(f"Found continuous token with length {token_length}, dropping item.")
+            raise DropItem(f"Continuous token length {token_length} exceeds {self.max_token_length}.")
         return item
 
 

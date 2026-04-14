@@ -241,8 +241,8 @@ class BiorxivSpider(scrapy.Spider):
         # 移除figures
         text = re.sub(r"(\n\n)?!\[.*?\]\(.*?\)", "", text)
 
-        # 移除cite
-        text = re.sub(r"\s*\[[\d,\s-]+\]", "", text)
+        # 移除cite，支持 [1]、[1, 2]、[1-3]、[1; 2] 等格式
+        text = re.sub(r"\s*\[[\d,;\s-]+\]", "", text)
 
         # 移除©
         text = re.sub(r"(?m)^\s*©.*\n?", "", text)

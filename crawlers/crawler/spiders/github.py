@@ -14,6 +14,7 @@ class GithubSpider(scrapy.Spider):
         "ITEM_PIPELINES": {
             "crawler.pipelines.SpecialCharFilterPipeline": 50,
             "crawler.pipelines.LengthFilterPipeline": 100,
+            "crawler.pipelines.GitHubLongTokenFilterPipeline": 125,
             "crawler.pipelines.DateRangeFilterPipeline": 150,
             "crawler.pipelines.GitHubDuplicateFilterPipeline": 200,
             "crawler.pipelines.MinHashLSHDuplicateFilterPipeline": 300,
