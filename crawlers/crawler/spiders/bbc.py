@@ -1,14 +1,13 @@
 import scrapy
 import json
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlencode
 from jsonpath_ng import parse
 from crawler.items import BBCNewsItem
 
 
 class BBCSpider(scrapy.Spider):
     name = "bbc"
-    allowed_domains = ["bbc.com", "google.com"]
+    allowed_domains = ["bbc.com"]
 
     custom_settings = {
         "USER_AGENT": "User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
@@ -30,6 +29,11 @@ class BBCSpider(scrapy.Spider):
         self.end_date = end_date
         self.max_samples = int(max_samples)
         self.subtitle = "news"
+        self.seen_article_urls = set()
+        self.sitemap_indexes = [
+            "https://www.bbc.com/sitemaps/https-index-com-news.xml",
+            "https://www.bbc.com/sitemaps/https-index-com-archive.xml",
+        ]
 
         self.valid_prefixes = [
             "https://www.bbc.com/news/articles/",
@@ -46,19 +50,59 @@ class BBCSpider(scrapy.Spider):
         ]
 
     async def start(self):
-        dates = self.generate_dates(self.start_date, self.end_date)
-
-        for date_str in dates:
-            params = {"q": "news site:bbc.com/news", "tbm": "nws", "tbs": f"cdr:1,cd_min:{date_str},cd_max:{date_str}", "start": 0}
-            url = f"https://www.google.com/search?{urlencode(params)}"
-            self.logger.info(f"URL: {url}")
-
+        for url in self.sitemap_indexes:
+            self.logger.info(f"Sitemap index: {url}")
             yield scrapy.Request(
                 url=url,
-                callback=self.parse_google,
-                meta={"date": date_str, "start_index": 0},
+                callback=self.parse_sitemap_index,
                 dont_filter=True,
             )
+
+    def parse_sitemap_index(self, response):
+        sitemap_nodes = response.xpath('//*[local-name()="sitemap"]')
+
+        for sitemap_node in sitemap_nodes:
+            loc = sitemap_node.xpath('./*[local-name()="loc"]/text()').get()
+            lastmod = sitemap_node.xpath('./*[local-name()="lastmod"]/text()').get()
+
+            if not loc:
+                continue
+
+            if lastmod and lastmod[:10] < self.start_date:
+                continue
+
+            yield scrapy.Request(url=loc, callback=self.parse_sitemap, dont_filter=True)
+
+    def parse_sitemap(self, response):
+        url_nodes = response.xpath('//*[local-name()="url"]')
+
+        for url_node in url_nodes:
+            if len(self.seen_article_urls) >= self.max_samples:
+                return
+
+            loc = url_node.xpath('./*[local-name()="loc"]/text()').get()
+            if not loc:
+                continue
+
+            loc = loc.split("?")[0]
+            if not any(loc.startswith(prefix) for prefix in self.valid_prefixes):
+                continue
+
+            sitemap_date = url_node.xpath('./*[local-name()="news"]/*[local-name()="publication_date"]/text()').get()
+            if not sitemap_date:
+                sitemap_date = url_node.xpath('./*[local-name()="lastmod"]/text()').get()
+            if not sitemap_date:
+                continue
+
+            article_date = sitemap_date[:10]
+            if article_date < self.start_date or article_date > self.end_date:
+                continue
+
+            if loc in self.seen_article_urls:
+                continue
+
+            self.seen_article_urls.add(loc)
+            yield scrapy.Request(url=loc, callback=self.parse_article, meta={"sitemap_date": sitemap_date})
 
     def parse_google(self, response):
         all_links = response.css("a::attr(href)").getall()
@@ -133,7 +177,7 @@ class BBCSpider(scrapy.Spider):
                 item = BBCNewsItem()
                 item["content"] = full_text
                 item["url"] = response.url
-                item["date"] = iso_date
+                item["date"] = iso_date or response.meta.get("sitemap_date")
                 item["category"] = "bbc_news"
                 item["metadata"] = {"title": title}
                 yield item
