@@ -23,7 +23,13 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1a-0.1b-20250728-ctx4096.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7a-g1d-0.1b-20260212-ctx8192.pth",
+    #     tokenizer_name="rwkv_vocab_v20230424",
+    #     model_type="rwkv7a",
+    #     data=data_list,
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1d-0.1b-20260129-ctx8192",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -36,6 +42,15 @@ config_list = [
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_default_bos",
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path="Qwen/Qwen3.5-0.8B-Base",
+    #     tokenizer_name="Qwen/Qwen3.5-0.8B-Base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_newline_token",
+    #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
     #     model_name_or_path="Qwen/Qwen3-0.6B-Base",
@@ -65,7 +80,7 @@ config_list = [
     #     model_args={"torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1a-0.4b-20250905-ctx4096",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1d-0.4b-20260210-ctx8192",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -117,6 +132,15 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
+    #     model_name_or_path="Qwen/Qwen3.5-2B-Base",
+    #     tokenizer_name="Qwen/Qwen3.5-2B-Base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_newline_token",
+    #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16},
+    # ),
+    # EvaluationConfig(
     #     model_name_or_path="Qwen/Qwen3-1.7B-Base",
     #     tokenizer_name="Qwen/Qwen3-1.7B-Base",
     #     model_type="hf",
@@ -126,7 +150,7 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-1.5b-20260110-ctx8192.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1e-1.5b-20260309-ctx8192",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -240,6 +264,15 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
+    #     model_name_or_path="Qwen/Qwen3.5-4B-Base",
+    #     tokenizer_name="Qwen/Qwen3.5-4B-Base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_newline_token",
+    #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16},
+    # ),
+    # EvaluationConfig(
     #     model_name_or_path="Qwen/Qwen3-4B-Base",
     #     tokenizer_name="Qwen/Qwen3-4B-Base",
     #     model_type="hf",
@@ -249,7 +282,7 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-2.9b-20251231-ctx8192.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1e-2.9b-20260312-ctx8192",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -372,6 +405,15 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
+    #     model_name_or_path="Qwen/Qwen3.5-9B-Base",
+    #     tokenizer_name="Qwen/Qwen3.5-9B-Base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     bos_mode="add_newline_token",
+    #     cache=MY_CACHE_DIR,
+    #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16},
+    # ),
+    # EvaluationConfig(
     #     model_name_or_path="Qwen/Qwen3-8B-Base",
     #     tokenizer_name="Qwen/Qwen3-8B-Base",
     #     model_type="hf",
@@ -390,7 +432,7 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-7.2b-20251231-ctx8192",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1f-7.2b-20260414-ctx8192",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -503,6 +545,14 @@ config_list = [
     #     bos_mode="add_default_bos",
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path="arcee-ai/Trinity-Nano-Base",
+    #     tokenizer_name="arcee-ai/Trinity-Nano-Base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    # ),
     # ##### 12B models #####
     # EvaluationConfig(
     #     model_name_or_path="mistralai/Ministral-3-14B-Base-2512",
@@ -514,7 +564,7 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-13.3b-20251231-ctx8192.pth",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1f-13.3b-20260415-ctx8192",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -658,12 +708,49 @@ config_list = [
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_newline_token",
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path="arcee-ai/Trinity-Mini-Base",
+    #     tokenizer_name="arcee-ai/Trinity-Mini-Base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path="jdopensource/JoyAI-LLM-Flash-Base",
+    #     tokenizer_name="jdopensource/JoyAI-LLM-Flash-Base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path="Qwen/Qwen3.5-35B-A3B-Base",
+    #     tokenizer_name="Qwen/Qwen3.5-35B-A3B-Base",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_newline_token",
+    #     model_args={"attn_implementation": "sdpa", "dtype": torch.bfloat16},
+    # ),
 ]
 
 
 config_list.extend(
     [
         # ##### < 1b models #####
+        # EvaluationConfig(
+        #     model_name_or_path="Qwen/Qwen3.5-0.8B-Base",
+        #     tokenizer_name="Qwen/Qwen3.5-0.8B-Base",
+        #     model_type="hf",
+        #     data=data_list,
+        #     cache=MY_CACHE_DIR,
+        #     bos_mode="add_newline_token",
+        #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16},
+        #     enable_chunking=False,
+        #     track_byte_wise_data=True,
+        # ),
         # EvaluationConfig(
         #     model_name_or_path="google/gemma-3-270m",
         #     tokenizer_name="google/gemma-3-270m",
@@ -676,7 +763,7 @@ config_list.extend(
         #     track_byte_wise_data=True,
         # ),
         # EvaluationConfig(
-        #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1a-0.1b-20250728-ctx4096.pth",
+        #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1d-0.1b-20260129-ctx8192",
         #     tokenizer_name="rwkv_vocab_v20230424",
         #     model_type="rwkv7",
         #     data=data_list,
@@ -769,6 +856,17 @@ config_list.extend(
         #     track_byte_wise_data=True,
         # ),
         # #### 1.5B models #####
+        # EvaluationConfig(
+        #     model_name_or_path="Qwen/Qwen3.5-2B-Base",
+        #     tokenizer_name="Qwen/Qwen3.5-2B-Base",
+        #     model_type="hf",
+        #     data=data_list,
+        #     cache=MY_CACHE_DIR,
+        #     bos_mode="add_newline_token",
+        #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16},
+        #     enable_chunking=False,
+        #     track_byte_wise_data=True,
+        # ),
         # EvaluationConfig(
         #     model_name_or_path="google/gemma-3-1b-pt",
         #     tokenizer_name="google/gemma-3-1b-pt",
@@ -878,6 +976,17 @@ config_list.extend(
         # ),
         # #### 3B models #####
         # EvaluationConfig(
+        #     model_name_or_path="Qwen/Qwen3.5-4B-Base",
+        #     tokenizer_name="Qwen/Qwen3.5-4B-Base",
+        #     model_type="hf",
+        #     data=data_list,
+        #     cache=MY_CACHE_DIR,
+        #     bos_mode="add_newline_token",
+        #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16},
+        #     enable_chunking=False,
+        #     track_byte_wise_data=True,
+        # ),
+        # EvaluationConfig(
         #     model_name_or_path="google/gemma-2-2b",
         #     tokenizer_name="google/gemma-2-2b",
         #     model_type="hf",
@@ -933,7 +1042,7 @@ config_list.extend(
         #     track_byte_wise_data=True,
         # ),
         # EvaluationConfig(
-        #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-2.9b-20251231-ctx8192.pth",
+        #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1d-2.9b-20260131-ctx8192",
         #     tokenizer_name="rwkv_vocab_v20230424",
         #     model_type="rwkv7",
         #     data=data_list,
@@ -1062,6 +1171,17 @@ config_list.extend(
         # ),
         # #### 7B models #####
         # EvaluationConfig(
+        #     model_name_or_path="Qwen/Qwen3.5-9B-Base",
+        #     tokenizer_name="Qwen/Qwen3.5-9B-Base",
+        #     model_type="hf",
+        #     data=data_list,
+        #     cache=MY_CACHE_DIR,
+        #     bos_mode="add_newline_token",
+        #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16},
+        #     enable_chunking=False,
+        #     track_byte_wise_data=True,
+        # ),
+        # EvaluationConfig(
         #     model_name_or_path="ibm-granite/granite-4.0-h-tiny-base",
         #     tokenizer_name="ibm-granite/granite-4.0-h-tiny-base",
         #     model_type="hf",
@@ -1106,7 +1226,7 @@ config_list.extend(
         #     track_byte_wise_data=True,
         # ),
         # EvaluationConfig(
-        #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1c-7.2b-20251231-ctx8192",
+        #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1f-7.2b-20260414-ctx8192",
         #     tokenizer_name="rwkv_vocab_v20230424",
         #     model_type="rwkv7",
         #     data=data_list,
@@ -1175,17 +1295,6 @@ config_list.extend(
         #     data=data_list,
         #     cache=MY_CACHE_DIR,
         #     bos_mode="add_newline_token",
-        #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
-        #     enable_chunking=False,
-        #     track_byte_wise_data=True,
-        # ),
-        # EvaluationConfig(
-        #     model_name_or_path="01-ai/Yi-1.5-6B",
-        #     tokenizer_name="01-ai/Yi-1.5-6B",
-        #     model_type="hf",
-        #     data=data_list,
-        #     cache=MY_CACHE_DIR,
-        #     bos_mode="add_default_eos",
         #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
         #     enable_chunking=False,
         #     track_byte_wise_data=True,
@@ -1307,6 +1416,17 @@ config_list.extend(
         #     cache=MY_CACHE_DIR,
         #     bos_mode="add_default_bos",
         #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
+        #     enable_chunking=False,
+        #     track_byte_wise_data=True,
+        # ),
+        # EvaluationConfig(
+        #     model_name_or_path="Qwen/Qwen3.5-35B-A3B-Base",
+        #     tokenizer_name="Qwen/Qwen3.5-35B-A3B-Base",
+        #     model_type="hf",
+        #     data=data_list,
+        #     cache=MY_CACHE_DIR,
+        #     bos_mode="add_newline_token",
+        #     model_args={"attn_implementation": "sdpa", "dtype": torch.bfloat16},
         #     enable_chunking=False,
         #     track_byte_wise_data=True,
         # ),
