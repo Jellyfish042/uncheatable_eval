@@ -4,8 +4,8 @@ import torch
 import gc
 
 data_list = [
-    "Jellyfish042/UncheatableEval-2026-01",
-    # "Jellyfish042/UncheatableEval-2026-01-Long",
+    "Jellyfish042/UncheatableEval-2026-04",
+    # "Jellyfish042/UncheatableEval-2026-04-Long",
 ]
 
 MY_CACHE_DIR = None

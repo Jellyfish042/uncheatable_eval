@@ -21,7 +21,7 @@ class BiorxivSpider(scrapy.Spider):
         },
         "CLOSESPIDER_ITEMCOUNT": 500,
         "LOG_LEVEL": "INFO",
-        "CONCURRENT_REQUESTS": 16,
+        "CONCURRENT_REQUESTS": 8,
         "DOWNLOAD_DELAY": 0.5,
         "COOKIES_ENABLED": False,
     }
@@ -47,8 +47,6 @@ class BiorxivSpider(scrapy.Spider):
         self.size_limit = size_limit
         self.mineru_client = MinerUClient(api_url=mineru_api)
         self.pdf_downloader = PlaywrightPDFDownloader(headless=True)
-        self.item_count = 0
-        self.max_items = 500  # 与 CLOSESPIDER_ITEMCOUNT 保持一致
 
     def start_requests(self):
         """使用 BioRxiv API 获取论文列表"""
@@ -107,7 +105,7 @@ class BiorxivSpider(scrapy.Spider):
                 }
             )
 
-        download_semaphore = asyncio.Semaphore(16)
+        download_semaphore = asyncio.Semaphore(4)
         ocr_semaphore = asyncio.Semaphore(16)
 
         async def process_paper(paper):
@@ -149,16 +147,10 @@ class BiorxivSpider(scrapy.Spider):
         for coro in asyncio.as_completed(tasks):
             item = await coro
             if item:
-                self.item_count += 1
                 yield item
-                # 达到目标数量后停止
-                if self.item_count >= self.max_items:
-                    self.logger.info(f"Reached max items ({self.max_items}), stopping...")
-                    return
 
-        # 只有未达到目标数量时才请求下一页
         next_cursor = cursor + self.page_size
-        if next_cursor < total and self.item_count < self.max_items:
+        if next_cursor < total:
             next_url = f"https://api.biorxiv.org/details/biorxiv/{self.start_date}/{self.end_date}/{next_cursor}"
             yield scrapy.Request(url=next_url, callback=self.parse_api, meta={"cursor": next_cursor})
 
