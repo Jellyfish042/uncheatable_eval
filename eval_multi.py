@@ -132,7 +132,7 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1e-1.5b-20260309-ctx8192",
+    #     model_name_or_path=RWKV_CACHE_DIR + "rwkv7-g1f-1.5b-20260419-ctx8192",
     #     tokenizer_name="rwkv_vocab_v20230424",
     #     model_type="rwkv7",
     #     data=data_list,
@@ -209,6 +209,15 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # ##### 3B models #####
+    # EvaluationConfig(
+    #     model_name_or_path="google/gemma-4-E2B",
+    #     tokenizer_name="google/gemma-4-E2B",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "sdpa", "dtype": torch.bfloat16},
+    # ),
     # EvaluationConfig(
     #     model_name_or_path="google/gemma-2-2b",
     #     tokenizer_name="google/gemma-2-2b",
@@ -357,6 +366,15 @@ config_list = [
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_default_bos",
     #     model_args={"torch_dtype": torch.bfloat16},
+    # ),
+    # EvaluationConfig(
+    #     model_name_or_path="google/gemma-4-E4B",
+    #     tokenizer_name="google/gemma-4-E4B",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "sdpa", "dtype": torch.bfloat16},
     # ),
     # ##### 7B models #####
     # EvaluationConfig(
