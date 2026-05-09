@@ -47,7 +47,7 @@ config = EvaluationConfig(
     bos_mode="add_default_eos",
     # the script will automatically download the datasets from the Hugging Face Hub
     # more datasets can be found at https://huggingface.co/collections/Jellyfish042/uncheatableeval
-    data=["Jellyfish042/UncheatableEval-2025-12"],
+    data=["Jellyfish042/UncheatableEval-2026-04"],
 )
 ```
 
