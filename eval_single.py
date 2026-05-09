@@ -1,4 +1,5 @@
 from evaluator import EvaluationConfig, Evaluator
+import torch
 
 # Create an EvaluationConfig instance to evaluate your model, for example:
 config = (
@@ -8,6 +9,7 @@ config = (
         model_type="hf",
         data=["Jellyfish042/UncheatableEval-2026-04"],
         bos_mode="add_default_eos",
+        model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     ),
 )
 
