@@ -22,7 +22,7 @@ class WikipediaSpider(scrapy.Spider):
         "CLOSESPIDER_ITEMCOUNT": 500,
         "LOG_LEVEL": "INFO",
         "CONCURRENT_REQUESTS": 16,
-        "DOWNLOAD_DELAY": 0.1,
+        "DOWNLOAD_DELAY": 0.3,
     }
 
     LANGUAGE_CONFIG = {
