@@ -168,14 +168,22 @@ class WikipediaSpider(scrapy.Spider):
 
             # Quota management: dynamic quota per language
             self.total_target = self.custom_settings.get("CLOSESPIDER_ITEMCOUNT", 500)
-            self.base_quota_per_language = self.total_target // len(self.languages)
-            self.language_quota = {lang: self.base_quota_per_language for lang in self.languages}
+            self.base_quota_per_language, quota_remainder = divmod(
+                self.total_target, len(self.languages)
+            )
+            self.language_quota = {
+                lang: self.base_quota_per_language + (1 if index < quota_remainder else 0)
+                for index, lang in enumerate(self.languages)
+            }
 
             # Configuration
             self.EMPTY_RESPONSE_THRESHOLD = 3
 
-            self.logger.info(f"Language balancing enabled: {len(self.languages)} languages, "
-                           f"{self.base_quota_per_language} items per language")
+            self.logger.info(
+                f"Language balancing enabled: {len(self.languages)} languages, "
+                f"base quota {self.base_quota_per_language}, "
+                f"remainder distributed to {quota_remainder} languages"
+            )
 
     def start_requests(self):
         if self.balance_languages:
