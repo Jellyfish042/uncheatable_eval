@@ -37,7 +37,8 @@ class AO3Spider(scrapy.Spider):
         self.subtitle = language
         self.language_id = language_map[language]
         self.max_page = int(max_page)
-        self.base_url = "https://archiveofourown.gay/works/search"
+        # self.base_url = "https://archiveofourown.gay/works/search"
+        self.base_url = "https://archiveofourown.org/works/search"
         self.step_size = 20
 
     def start_requests(self):
