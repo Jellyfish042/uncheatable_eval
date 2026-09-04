@@ -39,6 +39,7 @@ class EvaluationConfig:
     batch_size: int = 1  # batch size for inference, batch size > 1 is buggy and not supported yet
     track_byte_wise_data: bool = False  # whether to track byte-wise data
     track_single_sample_byte_wise_data: bool = False  # whether to track byte-wise data for each individual sample (also tracks top5 predictions)
+    track_single_sample_compression_rate: bool = False  # whether to record one compression rate for each sample
 
     def __post_init__(self):
 
@@ -356,7 +357,40 @@ class Evaluator:
         byte_size = len(byte_array)
         return byte_size
 
-    def eval_rwkv(self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data, track_single_sample_byte_wise_data=False):
+    @classmethod
+    def _build_single_sample_compression_rates(cls, texts, neg_log_prob_sums):
+        if len(texts) != len(neg_log_prob_sums):
+            raise ValueError("The number of texts and negative log probability sums must match")
+
+        factor = (1.0 / math.log(2.0)) * 0.125 * 100.0
+        records = []
+        for sample_index, (sample, neg_log_prob_sum) in enumerate(zip(texts, neg_log_prob_sums)):
+            byte_count = cls.get_string_byte_size(sample)
+            if byte_count == 0:
+                raise ValueError(f"Sample {sample_index} is empty; compression rate is undefined")
+
+            records.append(
+                {
+                    "sample_index": sample_index,
+                    "byte_count": byte_count,
+                    "neg_log_prob_sum": neg_log_prob_sum,
+                    "compression_rate": neg_log_prob_sum / byte_count * factor,
+                }
+            )
+
+        return records
+
+    def eval_rwkv(
+        self,
+        model,
+        tokenizer,
+        texts,
+        chunk_size,
+        bos_mode,
+        track_byte_wise_data,
+        track_single_sample_byte_wise_data=False,
+        track_single_sample_compression_rate=False,
+    ):
         rwkv_test_data = []
         rwkv_token_length_list = []
         char_count = []
@@ -472,11 +506,23 @@ class Evaluator:
             data_dict["single_sample_byte_wise_losses"] = single_sample_byte_wise_losses
             data_dict["single_sample_top5_predictions"] = single_sample_top5_predictions
 
+        if track_single_sample_compression_rate:
+            data_dict["single_sample_compression_rates"] = self._build_single_sample_compression_rates(texts, rwkv_test_data)
+
         return data_dict
 
     @torch.no_grad()
     def eval_hf_model(
-        self, model, tokenizer, texts, chunk_size, bos_mode, track_byte_wise_data, token2bytes_convert_func, track_single_sample_byte_wise_data=False
+        self,
+        model,
+        tokenizer,
+        texts,
+        chunk_size,
+        bos_mode,
+        track_byte_wise_data,
+        token2bytes_convert_func,
+        track_single_sample_byte_wise_data=False,
+        track_single_sample_compression_rate=False,
     ):
         data = []
         token_length_list = []
@@ -616,6 +662,9 @@ class Evaluator:
             data_dict["single_sample_byte_wise_losses"] = single_sample_byte_wise_losses
             data_dict["single_sample_top5_predictions"] = single_sample_top5_predictions
 
+        if track_single_sample_compression_rate:
+            data_dict["single_sample_compression_rates"] = self._build_single_sample_compression_rates(texts, data)
+
         return data_dict
 
     def make_log(self, data_dict, folder_path):
@@ -734,6 +783,7 @@ class Evaluator:
                             track_byte_wise_data=config.track_byte_wise_data,
                             token2bytes_convert_func=token2bytes_convert_func,
                             track_single_sample_byte_wise_data=config.track_single_sample_byte_wise_data,
+                            track_single_sample_compression_rate=config.track_single_sample_compression_rate,
                         )
                 elif config.model_type in ["rwkv", "rwkv7", "rwkv7a"]:
                     results = self.eval_rwkv(
@@ -744,6 +794,7 @@ class Evaluator:
                         bos_mode=config.bos_mode,
                         track_byte_wise_data=config.track_byte_wise_data,
                         track_single_sample_byte_wise_data=config.track_single_sample_byte_wise_data,
+                        track_single_sample_compression_rate=config.track_single_sample_compression_rate,
                     )
                 else:
                     raise NotImplementedError
@@ -764,6 +815,7 @@ class Evaluator:
                 results["enable_chunking"] = config.enable_chunking
                 results["track_byte_wise_data"] = config.track_byte_wise_data
                 results["track_single_sample_byte_wise_data"] = config.track_single_sample_byte_wise_data
+                results["track_single_sample_compression_rate"] = config.track_single_sample_compression_rate
 
                 self.make_log(results, config.log_path)
 
@@ -775,6 +827,7 @@ class Evaluator:
                     "single_sample_texts",
                     "single_sample_byte_wise_losses",
                     "single_sample_top5_predictions",
+                    "single_sample_compression_rates",
                 }
                 filtered_results = {k: v for k, v in results.items() if k not in skip_keys}
                 print(json.dumps(filtered_results, indent=4, ensure_ascii=False, default=self.default_serializer))

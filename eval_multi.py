@@ -103,6 +103,15 @@ config_list = [
     #     bos_mode="add_default_eos",
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path="openbmb/BitCPM-CANN-0.5B",
+    #     tokenizer_name="openbmb/MiniCPM4-0.5B",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16, "use_cache": False},
+    # ),  # need to uninstall flash attention for this model to work
     # ##### 1.5B models #####
     # EvaluationConfig(
     #     model_name_or_path="google/gemma-3-1b-pt",
@@ -208,6 +217,15 @@ config_list = [
     #     bos_mode="add_newline_token",
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path="openbmb/BitCPM-CANN-1B",
+    #     tokenizer_name="openbmb/MiniCPM4-0.5B",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16, "use_cache": False},
+    # ),  # need to uninstall flash attention for this model to work
     # ##### 3B models #####
     # EvaluationConfig(
     #     model_name_or_path="google/gemma-4-E2B",
@@ -376,6 +394,15 @@ config_list = [
     #     bos_mode="add_default_bos",
     #     model_args={"attn_implementation": "sdpa", "dtype": torch.bfloat16},
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path="openbmb/BitCPM-CANN-3B",
+    #     tokenizer_name="openbmb/MiniCPM4-0.5B",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16, "use_cache": False},
+    # ),  # need to uninstall flash attention for this model to work
     # ##### 7B models #####
     # EvaluationConfig(
     #     model_name_or_path="mistralai/Ministral-3-8B-Base-2512",
@@ -526,6 +553,15 @@ config_list = [
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_default_bos",
     # ),
+    # EvaluationConfig(
+    #     model_name_or_path="openbmb/BitCPM-CANN-8B",
+    #     tokenizer_name="openbmb/MiniCPM4-0.5B",
+    #     model_type="hf",
+    #     data=data_list,
+    #     cache=MY_CACHE_DIR,
+    #     bos_mode="add_default_bos",
+    #     model_args={"attn_implementation": "sdpa", "torch_dtype": torch.bfloat16, "use_cache": False},
+    # ),  # need to uninstall flash attention for this model to work
     # ##### 12B models #####
     # EvaluationConfig(
     #     model_name_or_path="mistralai/Ministral-3-14B-Base-2512",

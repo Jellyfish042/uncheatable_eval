@@ -7,7 +7,7 @@ config = (
         model_name_or_path="Qwen/Qwen3-0.6B-Base",
         tokenizer_name="Qwen/Qwen3-0.6B-Base",
         model_type="hf",
-        data=["Jellyfish042/UncheatableEval-2026-04"],
+        data=["Jellyfish042/UncheatableEval-2026-07"],
         bos_mode="add_default_eos",
         model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     ),

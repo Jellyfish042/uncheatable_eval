@@ -19,3 +19,13 @@ CLAUDE.local.md
 !support/uncheatable_eval_dev.jsonl
 
 visualizations/
+
+logs*/
+
+analysis_cache/
+
+analyze/
+
+research/
+
+.history/
