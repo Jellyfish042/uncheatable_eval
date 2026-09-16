@@ -27,5 +27,6 @@ analysis_cache/
 analyze/
 
 research/
+benchmark_validation/results/
 
 .history/
