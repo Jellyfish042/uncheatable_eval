@@ -1,6 +1,6 @@
 # Uncheatable Eval
 
-[![arXiv](https://img.shields.io/badge/arXiv-2609.27510-b31b1b.svg)](https://arxiv.org/abs/2609.27510) [![Leaderboard](https://img.shields.io/badge/%F0%9F%8F%86%20Leaderboard-Gradio-ff7c00)](https://huggingface.co/spaces/Jellyfish042/UncheatableEval) [![Data](https://img.shields.io/badge/%F0%9F%A4%97%20Data-HuggingFace-yellow)](https://huggingface.co/collections/Jellyfish042/uncheatableeval) [![Compression-Lens](https://img.shields.io/badge/%F0%9F%94%AC%20Compression--Lens-Visualization-blue)](https://huggingface.co/spaces/Jellyfish042/Compression-Lens)
+[![arXiv](https://img.shields.io/badge/arXiv-2609.27510-b31b1b.svg?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2609.27510) [![Leaderboard](https://img.shields.io/badge/%F0%9F%8F%86%20Leaderboard-Gradio-ff7c00)](https://huggingface.co/spaces/Jellyfish042/UncheatableEval) [![Data](https://img.shields.io/badge/%F0%9F%A4%97%20Data-HuggingFace-yellow)](https://huggingface.co/collections/Jellyfish042/uncheatableeval) [![Compression-Lens](https://img.shields.io/badge/%F0%9F%94%AC%20Compression--Lens-Visualization-blue)](https://huggingface.co/spaces/Jellyfish042/Compression-Lens)
 
 ## Introduction
 Traditional LLM benchmarks are easily compromised by unintentional or intentional data leakage, making many benchmarks unreliable and unable to truly reflect the capabilities of LLMs.
