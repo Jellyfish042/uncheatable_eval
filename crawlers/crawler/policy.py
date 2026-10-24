@@ -1,6 +1,13 @@
 from rotating_proxies.policy import BanDetectionPolicy
 
 
+class GithubBanPolicy(BanDetectionPolicy):
+    def response_is_ban(self, request, response):
+        if response.status in (403, 429):
+            return False
+        return super().response_is_ban(request, response)
+
+
 class ArxivBanPolicy(BanDetectionPolicy):
     def response_is_ban(self, request, response):
         if request.method == "HEAD" and response.status == 200:

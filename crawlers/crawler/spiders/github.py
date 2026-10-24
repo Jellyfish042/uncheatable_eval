@@ -3,7 +3,7 @@ import random
 import base64
 from datetime import datetime, timedelta
 from crawler.items import GithubCodeItem
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 
 class GithubSpider(scrapy.Spider):
@@ -11,6 +11,14 @@ class GithubSpider(scrapy.Spider):
     allowed_domains = ["api.github.com"]
 
     custom_settings = {
+        "CONCURRENT_REQUESTS": 1,
+        "DOWNLOADER_MIDDLEWARES": {
+            "rotating_proxies.middlewares.RotatingProxyMiddleware": 610,
+            "rotating_proxies.middlewares.BanDetectionMiddleware": 620,
+            # After decompression (590), before Scrapy retries (550) on responses.
+            "crawler.middlewares.GithubRateLimitMiddleware": 580,
+        },
+        "ROTATING_PROXY_BAN_POLICY": "crawler.policy.GithubBanPolicy",
         "ITEM_PIPELINES": {
             "crawler.pipelines.SpecialCharFilterPipeline": 50,
             "crawler.pipelines.LengthFilterPipeline": 100,
@@ -151,7 +159,10 @@ class GithubSpider(scrapy.Spider):
         current_page = response.meta["page"]
         if current_page < 10 and len(items) == 100:
             next_page = current_page + 1
-            next_url = response.meta["base_url"].replace(f"page={current_page}", f"page={next_page}")
+            parts = urlsplit(response.meta["base_url"])
+            params = parse_qs(parts.query, keep_blank_values=True)
+            params["page"] = [str(next_page)]
+            next_url = parts._replace(query=urlencode(params, doseq=True)).geturl()
             yield scrapy.Request(
                 url=next_url, headers=self.headers, callback=self.parse_search, meta={"page": next_page, "base_url": response.meta["base_url"]}
             )

@@ -3,7 +3,11 @@
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+import asyncio
+import time
+
 from scrapy import signals
+from scrapy.downloadermiddlewares.retry import get_retry_request
 
 # useful for handling different item types with a single interface
 from itemadapter import ItemAdapter
@@ -51,6 +55,39 @@ class GithubCrawlerSpiderMiddleware:
 
     def spider_opened(self, spider):
         spider.logger.info("Spider opened: %s" % spider.name)
+
+
+class GithubRateLimitMiddleware:
+    async def process_response(self, request, response, spider):
+        if response.status not in (403, 429):
+            return response
+
+        message = response.body[:500].decode("utf-8", errors="replace")
+        remaining = response.headers.get("X-RateLimit-Remaining")
+        retry_after = response.headers.get("Retry-After")
+        if (response.status == 403 and remaining != b"0" and retry_after is None
+                and "rate limit" not in message.lower() and "abuse detection" not in message.lower()):
+            spider.logger.error("GitHub 403: %s; %s", request.url, message)
+            return response
+
+        retry = get_retry_request(request, spider=spider, reason="github_rate_limit", max_retry_times=5)
+        if retry is None:
+            request.meta["dont_retry"] = True
+            return response
+
+        delay = 60 * 2 ** request.meta.get("retry_times", 0)
+        try:
+            if retry_after is not None:
+                delay = max(1, float(retry_after) + 1)
+            elif remaining == b"0" and response.headers.get("X-RateLimit-Reset"):
+                delay = max(1, float(response.headers["X-RateLimit-Reset"]) - time.time() + 1)
+        except ValueError:
+            pass
+
+        # With one concurrent request, waiting here also holds back the next request.
+        spider.logger.warning("GitHub rate limited; waiting %.0fs before retrying %s", delay, request.url)
+        await asyncio.sleep(delay)
+        return retry
 
 
 class GithubCrawlerDownloaderMiddleware:
