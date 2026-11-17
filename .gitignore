@@ -13,6 +13,7 @@ models/
 .agent/
 
 CLAUDE.local.md
+my_eval_multi.py
 
 .claude/
 
