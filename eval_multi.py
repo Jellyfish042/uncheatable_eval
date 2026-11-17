@@ -271,7 +271,14 @@ config_list = [
     #     data=data_list,
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_default_bos",
-    #     model_args={"attn_implementation": "sdpa", "dtype": torch.bfloat16},
+    #     model_args={
+    #         "attn_implementation": {
+    #             "text_config": "sdpa",
+    #             "vision_config": "sdpa",
+    #             "audio_config": "eager",
+    #         },
+    #         "dtype": torch.bfloat16,
+    #     },
     # ),
     # EvaluationConfig(
     #     model_name_or_path="google/gemma-2-2b",
@@ -422,15 +429,6 @@ config_list = [
     #     model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
     # ),
     # EvaluationConfig(
-    #     model_name_or_path="XHToken/Spark-X2.5-4B-Base",
-    #     tokenizer_name="XHToken/Spark-X2.5-4B",
-    #     model_type="hf",
-    #     data=data_list,
-    #     cache=MY_CACHE_DIR,
-    #     bos_mode="add_default_bos",
-    #     # model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
-    # ),
-    # EvaluationConfig(
     #     model_name_or_path="IFM/K2-Horizon-3.7B",
     #     tokenizer_name="IFM/K2-Horizon-3.7B",
     #     model_type="hf",
@@ -473,7 +471,14 @@ config_list = [
     #     data=data_list,
     #     cache=MY_CACHE_DIR,
     #     bos_mode="add_default_bos",
-    #     model_args={"attn_implementation": "sdpa", "dtype": torch.bfloat16},
+    #     model_args={
+    #         "attn_implementation": {
+    #             "text_config": "sdpa",
+    #             "vision_config": "sdpa",
+    #             "audio_config": "eager",
+    #         },
+    #         "dtype": torch.bfloat16,
+    #     },
     # ),
     # EvaluationConfig(
     #     model_name_or_path="openbmb/BitCPM-CANN-3B",
@@ -1230,17 +1235,6 @@ config_list.extend(
         #     cache=MY_CACHE_DIR,
         #     bos_mode="add_default_bos",
         #     model_args={"attn_implementation": "sdpa", "dtype": torch.bfloat16},
-        #     enable_chunking=False,
-        #     track_byte_wise_data=True,
-        # ),
-        # EvaluationConfig(
-        #     model_name_or_path="XHToken/Spark-X2.5-4B-Base",
-        #     tokenizer_name="XHToken/Spark-X2.5-4B",
-        #     model_type="hf",
-        #     data=data_list,
-        #     cache=MY_CACHE_DIR,
-        #     bos_mode="add_default_bos",
-        #     # model_args={"attn_implementation": "flash_attention_2", "torch_dtype": torch.bfloat16},
         #     enable_chunking=False,
         #     track_byte_wise_data=True,
         # ),
